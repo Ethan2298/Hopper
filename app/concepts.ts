@@ -6,7 +6,7 @@ import { syntaxTree } from "@codemirror/language"
 
 export const conceptMap: Record<string, string> = {}
 
-const categories: Record<string, string[]> = {
+export const categories: Record<string, string[]> = {
   "declaration": [
     // JS/TS/Python
     "VariableDeclaration", "FunctionDeclaration", "ClassDeclaration",
@@ -30,6 +30,8 @@ const categories: Record<string, string[]> = {
     // Rust
     "IfExpression", "MatchExpression", "WhileExpression",
     "ForExpression", "LoopExpression",
+    // Svelte
+    "IfBlock", "EachBlock", "AwaitBlock", "KeyBlock",
   ],
   "control-jump": [
     // JS/TS/Python
@@ -50,6 +52,8 @@ const categories: Record<string, string[]> = {
     "ArrayExpression", "ObjectExpression",
     // Rust
     "RawString", "Char", "Integer", "Float", "Boolean", "TupleExpression",
+    // Svelte
+    "Interpolation",
   ],
   "parameter": [
     "ParamList", "ArrayPattern", "ObjectPattern",

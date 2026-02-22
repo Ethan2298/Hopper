@@ -28,6 +28,11 @@
       font-family: monospace;
       color: #9da5b4;
     }
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
     .main {
       flex: 1;
       display: flex;
@@ -119,12 +124,36 @@
       color: #abb2bf;
     }
 
+    /* Zoom control */
+    .zoom-control {
+      display: flex;
+      gap: 2px;
+      background: #181a1f;
+      border-radius: 4px;
+      padding: 2px;
+      -webkit-app-region: no-drag;
+    }
+    .zoom-btn {
+      background: none;
+      border: none;
+      color: #636d83;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .zoom-btn:hover { color: #abb2bf; }
+    .zoom-btn.active {
+      background: #2c313a;
+      color: #abb2bf;
+    }
+
     /* Editor */
     #editor {
       flex: 1;
       overflow: auto;
     }
-    .cm-editor { height: 100%; }
+    #editor .cm-editor { height: 100%; }
     #editor.hidden { display: none; }
 
     /* Concept tree — main content */
@@ -145,7 +174,7 @@
       font-size: 14px;
     }
 
-    /* Category groups */
+    /* Category groups (still used by concept-panel code snippets) */
     .cp-group { }
     .cp-group-header {
       padding: 8px 16px;
@@ -239,15 +268,181 @@
       background: #1e2127;
       border-right: 1px solid #2c313a;
     }
+
+    /* --- Prose panel styles --- */
+
+    /* Level 0: Summary */
+    .prose-summary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 40px;
+    }
+    .prose-summary-card {
+      max-width: 500px;
+      background: #2c313a;
+      border-radius: 8px;
+      padding: 32px;
+      text-align: center;
+      line-height: 1.6;
+      font-size: 15px;
+      color: #abb2bf;
+    }
+    .prose-summary-hint {
+      margin-top: 16px;
+      font-size: 12px;
+      color: #636d83;
+    }
+
+    /* Level 1: Outline */
+    .prose-outline {
+      padding: 16px 24px;
+    }
+    .prose-outline-heading {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e5c07b;
+      margin-top: 16px;
+      margin-bottom: 6px;
+      text-transform: capitalize;
+    }
+    .prose-outline-heading:first-child {
+      margin-top: 0;
+    }
+    .prose-outline-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .prose-outline-item {
+      padding: 4px 0 4px 16px;
+      font-size: 13px;
+      color: #abb2bf;
+      position: relative;
+    }
+    .prose-outline-item::before {
+      content: "\2022";
+      position: absolute;
+      left: 4px;
+      color: #636d83;
+    }
+    .prose-outline-item:hover {
+      color: #e5c07b;
+    }
+
+    /* Level 2: Explanation blocks */
+    .prose-block {
+      margin: 8px 16px;
+      padding: 12px 16px;
+      border-left: 3px solid #636d83;
+      background: #2c313a;
+      border-radius: 0 6px 6px 0;
+    }
+    .prose-block-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .prose-kind-badge {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+    .prose-block-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #abb2bf;
+    }
+    .prose-block-body {
+      padding: 0 0 4px 0;
+    }
+    .prose-block-summary {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #9da5b4;
+    }
+    .prose-block-detail {
+      font-size: 12px;
+      line-height: 1.5;
+      color: #7a8294;
+      margin-top: 4px;
+    }
+    .prose-code-toggle {
+      background: none;
+      border: 1px solid #3a3f4b;
+      color: #636d83;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    .prose-code-toggle:hover {
+      color: #abb2bf;
+      background: #3a3f4b;
+    }
+    .prose-block .cp-snippet {
+      margin: 8px 0 0 0;
+    }
+
+    /* Level 3: Interleaved */
+    .prose-interleaved {
+      margin: 8px 16px;
+      border-left: 3px solid #636d83;
+      border-radius: 0 6px 6px 0;
+      overflow: hidden;
+    }
+    .prose-interleaved-header {
+      padding: 10px 16px;
+      background: #2c313a;
+      font-size: 13px;
+      color: #abb2bf;
+      border-bottom: 1px solid #21252b;
+    }
+    .prose-interleaved-code {
+      border-bottom: 1px solid #21252b;
+    }
+    .prose-interleaved-code .cm-editor {
+      font-size: 12px;
+      background: #1e2127;
+    }
+    .prose-interleaved-code .cm-editor .cm-scroller {
+      padding: 4px 0;
+    }
+    .prose-interleaved-code .cm-editor .cm-gutters {
+      background: #1e2127;
+      border-right: 1px solid #2c313a;
+    }
+    .prose-interleaved-note {
+      padding: 6px 16px;
+      font-size: 12px;
+      color: #98c379;
+      background: #2c313a;
+      border-bottom: 1px solid #21252b;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
   <header>
     <span>Hopper</span>
     <span id="current-file">No file open</span>
-    <div class="mode-toggle">
-      <button id="mode-learn" class="active">Learn</button>
-      <button id="mode-editor">Editor</button>
+    <div class="header-controls">
+      <div class="zoom-control">
+        <button class="zoom-btn" data-level="0">Summary</button>
+        <button class="zoom-btn" data-level="1">Outline</button>
+        <button class="zoom-btn active" data-level="2">Explain</button>
+        <button class="zoom-btn" data-level="3">Code+</button>
+      </div>
+      <div class="mode-toggle">
+        <button id="mode-reader" class="active">Reader</button>
+        <button id="mode-editor">Editor</button>
+      </div>
     </div>
   </header>
   <div class="main">
