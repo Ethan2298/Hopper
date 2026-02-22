@@ -22,6 +22,7 @@
     "@codemirror/lang-python": "^6.0.0",
     "@codemirror/lang-rust": "^6.0.2",
     "@codemirror/theme-one-dark": "^6.0.0",
+    "@replit/codemirror-lang-svelte": "^6.0.0",
     "codemirror": "^6.0.0"
   }
 }
