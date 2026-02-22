@@ -1,0 +1,27 @@
+{
+  "name": "ergonomic-code",
+  "version": "1.0.0",
+  "description": "Annotated AST code viewer built on a fork of CodeMirror 6.",
+  "main": "main.js",
+  "scripts": {
+    "bundle": "./node_modules/.bin/esbuild app/editor.ts --bundle --outfile=app/bundle.js",
+    "start": "npm run bundle && ./node_modules/.bin/electron .",
+    "dev": "npm run bundle && ./node_modules/.bin/electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ethan2298/ergonomic-code.git"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^40.6.0",
+    "esbuild": "^0.27.3"
+  },
+  "dependencies": {
+    "@codemirror/lang-javascript": "^6.0.0",
+    "@codemirror/lang-python": "^6.0.0",
+    "@codemirror/lang-rust": "^6.0.2",
+    "@codemirror/theme-one-dark": "^6.0.0",
+    "codemirror": "^6.0.0"
+  }
+}
