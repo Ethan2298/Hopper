@@ -102,6 +102,8 @@ When this file depends on or refers to something defined in another file in the 
 
 ${projectFiles.join("\n")}
 
+When referring to specific pieces of code (a function name, a variable, a condition, a pattern), wrap the plain-English phrase and the actual code snippet together using this syntax: [[phrase||code]]. For example: "The file starts by [[importing the path library||const path = require("path")]]." Use this sparingly — about 2-4 annotations per paragraph. Keep code snippets to 1-3 lines. Do not nest annotations or include ]] inside the code portion. Continue using @filename for file references, not [[]].
+
 Do not wrap your response in any special formatting. Just write the prose directly.`
 
   try {
@@ -113,7 +115,7 @@ Do not wrap your response in any special formatting. Just write the prose direct
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 2048,
         system: systemPrompt,
         messages: [

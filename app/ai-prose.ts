@@ -12,8 +12,10 @@ declare global {
 
 const cache = new Map<string, string>()
 
+const CACHE_VERSION = "v3-sonnet46"
+
 async function hashKey(filename: string, content: string): Promise<string> {
-  const data = new TextEncoder().encode(filename + "\0" + content)
+  const data = new TextEncoder().encode(CACHE_VERSION + "\0" + filename + "\0" + content)
   const buf = await crypto.subtle.digest("SHA-256", data)
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
