@@ -85,9 +85,9 @@ function openFile(filePath: string, filename: string) {
 
     document.getElementById("current-file")!.textContent = filePath
 
-    // Update book panel with file content
+    // Update book panel with file content and editor view (for AST extraction)
     if (bookPanel) {
-      bookPanel.update(content, filename)
+      bookPanel.update(content, filename, editorView!)
     }
   })
 }

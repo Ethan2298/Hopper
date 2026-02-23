@@ -88,11 +88,13 @@ ipcMain.handle("list-files", async (_event, rootDir) => {
   return results
 })
 
-ipcMain.handle("describe-file", async (_event, { filename, fileContent, projectFiles }) => {
+ipcMain.handle("describe-file", async (_event, { filename, fileContent, projectFiles, outline }) => {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     return { error: "No ANTHROPIC_API_KEY environment variable set. Launch the app with: ANTHROPIC_API_KEY=sk-... npm start" }
   }
+
+  const fileListBlock = projectFiles.join("\n")
 
   const systemPrompt = `You are writing a section of a technical book that explains a software project to a reader who can follow logic but is not a programmer. Each file is one section of the book.
 
@@ -100,11 +102,18 @@ Write a plain English description of what this file does. Imagine you are explai
 
 When this file depends on or refers to something defined in another file in the project, write the other file's name as @filename (for example, @utils.ts or @main.js). Only use @filename references for files that actually exist in the project -- here is the full list of files:
 
-${projectFiles.join("\n")}
+${fileListBlock}
 
 When referring to specific pieces of code (a function name, a variable, a condition, a pattern), wrap the plain-English phrase and the actual code snippet together using this syntax: [[phrase||code]]. For example: "The file starts by [[importing the path library||const path = require("path")]]." Use this sparingly — about 2-4 annotations per paragraph. Keep code snippets to 1-3 lines. Do not nest annotations or include ]] inside the code portion. Continue using @filename for file references, not [[]].
 
 Do not wrap your response in any special formatting. Just write the prose directly.`
+
+  let userContent
+  if (outline) {
+    userContent = `Here is the file "${filename}":\n\n${fileContent}\n\nFor reference, here is the file's structure:\n\n${outline}`
+  } else {
+    userContent = `Here is the file "${filename}":\n\n${fileContent}`
+  }
 
   try {
     const res = await fetch(ANTHROPIC_API_URL, {
@@ -116,12 +125,12 @@ Do not wrap your response in any special formatting. Just write the prose direct
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 2048,
+        max_tokens: 4096,
         system: systemPrompt,
         messages: [
           {
             role: "user",
-            content: `Here is the file "${filename}":\n\n${fileContent}`,
+            content: userContent,
           },
         ],
       }),

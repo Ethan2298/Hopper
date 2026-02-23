@@ -5,6 +5,7 @@ declare global {
         filename: string
         fileContent: string
         projectFiles: string[]
+        outline?: string
       }) => Promise<{ text?: string; error?: string }>
     }
   }
@@ -12,7 +13,7 @@ declare global {
 
 const cache = new Map<string, string>()
 
-const CACHE_VERSION = "v3-sonnet46"
+const CACHE_VERSION = "v5-prose"
 
 async function hashKey(filename: string, content: string): Promise<string> {
   const data = new TextEncoder().encode(CACHE_VERSION + "\0" + filename + "\0" + content)
@@ -27,7 +28,8 @@ const MAX_CONTENT_SIZE = 30_000
 export async function describeFile(
   filename: string,
   content: string,
-  projectFiles: string[]
+  projectFiles: string[],
+  outline: string = ""
 ): Promise<{ text?: string; error?: string; truncated?: boolean }> {
   const key = await hashKey(filename, content)
 
@@ -41,7 +43,7 @@ export async function describeFile(
     truncated = true
   }
 
-  const result = await window.ai.describe({ filename, fileContent, projectFiles })
+  const result = await window.ai.describe({ filename, fileContent, projectFiles, outline })
 
   if (result.text) {
     cache.set(key, result.text)

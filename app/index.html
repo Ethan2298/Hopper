@@ -153,47 +153,45 @@
     /* --- Book panel styles --- */
 
     .book-prose {
-      padding: 24px 32px;
-      max-width: 700px;
+      padding: 40px 48px 60px;
+      max-width: 620px;
+      margin: 0 auto;
     }
     .book-title {
       font-family: Georgia, "Times New Roman", serif;
-      font-size: 20px;
-      font-weight: 600;
-      color: #e5c07b;
-      margin-bottom: 16px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #3a3f4b;
+      font-size: 26px;
+      font-weight: normal;
+      font-style: italic;
+      color: #d4d4d4;
+      margin-bottom: 28px;
+      text-align: center;
     }
     .book-paragraph {
       font-family: Georgia, "Times New Roman", serif;
-      font-size: 14px;
-      line-height: 1.75;
-      color: #abb2bf;
-      margin-bottom: 12px;
+      font-size: 15px;
+      line-height: 1.85;
+      color: #bcc2cd;
+      margin-bottom: 0;
+      text-indent: 1.5em;
+    }
+    .book-paragraph:first-of-type {
+      text-indent: 0;
     }
     .book-file-link {
-      font-family: "SF Mono", "Fira Code", Menlo, monospace;
-      font-size: 13px;
       color: #61afef;
       text-decoration: none;
-      border-bottom: 1px dotted #61afef;
       cursor: pointer;
     }
     .book-file-link:hover {
-      color: #8cc8ff;
-      border-bottom-color: #8cc8ff;
+      text-decoration: underline;
     }
-    /* Code-linked highlights */
+    /* Code-linked highlights — like [[wikilinks]] */
     .book-code-highlight {
       color: #e5c07b;
-      border-bottom: 1px dotted #e5c07b;
       cursor: default;
-      transition: color 0.15s;
     }
     .book-code-highlight:hover {
       color: #f0d48b;
-      border-bottom-color: #f0d48b;
     }
 
     /* Code tooltip */
@@ -202,11 +200,11 @@
       display: none;
       background: #1e2127;
       border: 1px solid #3a3f4b;
-      border-radius: 6px;
+      border-radius: 4px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-      padding: 8px 12px;
-      max-width: 500px;
-      max-height: 200px;
+      padding: 10px 14px;
+      max-width: 520px;
+      max-height: 240px;
       overflow: auto;
       z-index: 9999;
       pointer-events: none;
@@ -220,12 +218,12 @@
     }
 
     .book-truncated-note {
-      font-size: 12px;
-      color: #e5c07b;
-      background: #e5c07b15;
-      padding: 6px 12px;
-      border-radius: 4px;
-      margin-bottom: 16px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 13px;
+      font-style: italic;
+      color: #848b98;
+      text-align: center;
+      margin-bottom: 20px;
     }
 
     /* Loading state */
@@ -269,6 +267,15 @@
       font-family: monospace;
       white-space: pre-wrap;
       word-break: break-word;
+    }
+
+    /* Symbol references — like @mentions */
+    .book-symbol-ref {
+      color: #e5c07b;
+      cursor: default;
+    }
+    .book-symbol-ref:hover {
+      color: #f0d48b;
     }
   </style>
 </head>
