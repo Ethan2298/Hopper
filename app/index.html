@@ -124,30 +124,6 @@
       color: #abb2bf;
     }
 
-    /* Zoom control */
-    .zoom-control {
-      display: flex;
-      gap: 2px;
-      background: #181a1f;
-      border-radius: 4px;
-      padding: 2px;
-      -webkit-app-region: no-drag;
-    }
-    .zoom-btn {
-      background: none;
-      border: none;
-      color: #636d83;
-      font-size: 11px;
-      padding: 3px 10px;
-      border-radius: 3px;
-      cursor: pointer;
-    }
-    .zoom-btn:hover { color: #abb2bf; }
-    .zoom-btn.active {
-      background: #2c313a;
-      color: #abb2bf;
-    }
-
     /* Editor */
     #editor {
       flex: 1;
@@ -174,257 +150,90 @@
       font-size: 14px;
     }
 
-    /* Category groups (still used by concept-panel code snippets) */
-    .cp-group { }
-    .cp-group-header {
-      padding: 8px 16px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      user-select: none;
+    /* --- Book panel styles --- */
+
+    .book-prose {
+      padding: 24px 32px;
+      max-width: 700px;
+    }
+    .book-title {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 20px;
       font-weight: 600;
-      font-size: 13px;
+      color: #e5c07b;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #3a3f4b;
+    }
+    .book-paragraph {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 14px;
+      line-height: 1.75;
       color: #abb2bf;
+      margin-bottom: 12px;
     }
-    .cp-group-header:hover { background: #2c313a; }
-    .cp-arrow, .cp-item-arrow {
-      font-size: 9px;
-      color: #636d83;
-      width: 12px;
-      flex-shrink: 0;
-      transition: transform 0.15s;
-    }
-    .cp-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .cp-cat-name { flex: 1; }
-    .cp-cat-desc {
-      font-weight: 400;
-      font-size: 11px;
-      color: #636d83;
-      margin-left: 4px;
-    }
-    .cp-count {
-      font-size: 11px;
-      color: #636d83;
-      font-weight: 400;
-      background: #2c313a;
-      padding: 1px 6px;
-      border-radius: 8px;
-    }
-
-    /* Items within a group */
-    .cp-group-items { padding: 2px 0 4px 20px; }
-    .cp-item { }
-    .cp-item-header {
-      padding: 4px 16px;
+    .book-file-link {
+      font-family: "SF Mono", "Fira Code", Menlo, monospace;
+      font-size: 13px;
+      color: #61afef;
+      text-decoration: none;
+      border-bottom: 1px dotted #61afef;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      user-select: none;
-      font-family: "SF Mono", "Fira Code", "Cascadia Code", Menlo, monospace;
+    }
+    .book-file-link:hover {
+      color: #8cc8ff;
+      border-bottom-color: #8cc8ff;
+    }
+    .book-truncated-note {
       font-size: 12px;
-      color: #9da5b4;
-    }
-    .cp-item-header:hover { background: #2c313a; }
-    .cp-item-label {
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .cp-item-line {
-      font-size: 10px;
-      color: #636d83;
-      flex-shrink: 0;
-    }
-    .cp-item-node {
-      font-size: 10px;
-      color: #4d5566;
-      flex-shrink: 0;
-    }
-
-    /* Code snippet rendered via CodeMirror */
-    .cp-snippet {
-      margin: 4px 12px 8px 34px;
+      color: #e5c07b;
+      background: #e5c07b15;
+      padding: 6px 12px;
       border-radius: 4px;
-      overflow: hidden;
-      border-left: 3px solid #636d83;
-    }
-    .cp-snippet .cm-editor {
-      font-size: 12px;
-      max-height: 300px;
-      background: #1e2127;
-    }
-    .cp-snippet .cm-editor .cm-scroller {
-      padding: 6px 0;
-    }
-    .cp-snippet .cm-editor .cm-gutters {
-      background: #1e2127;
-      border-right: 1px solid #2c313a;
+      margin-bottom: 16px;
     }
 
-    /* --- Prose panel styles --- */
-
-    /* Level 0: Summary */
-    .prose-summary {
+    /* Loading state */
+    .book-loading {
       display: flex;
       align-items: center;
-      justify-content: center;
-      height: 100%;
-      padding: 40px;
-    }
-    .prose-summary-card {
-      max-width: 500px;
-      background: #2c313a;
-      border-radius: 8px;
+      gap: 10px;
       padding: 32px;
-      text-align: center;
-      line-height: 1.6;
-      font-size: 15px;
-      color: #abb2bf;
-    }
-    .prose-summary-hint {
-      margin-top: 16px;
-      font-size: 12px;
       color: #636d83;
+      font-size: 14px;
+    }
+    .book-loading-dot {
+      width: 8px;
+      height: 8px;
+      background: #61afef;
+      border-radius: 50%;
+      animation: book-pulse 1s ease-in-out infinite;
+    }
+    @keyframes book-pulse {
+      0%, 100% { opacity: 0.3; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.2); }
     }
 
-    /* Level 1: Outline */
-    .prose-outline {
-      padding: 16px 24px;
+    /* Error state */
+    .book-error {
+      padding: 32px;
     }
-    .prose-outline-heading {
-      font-size: 13px;
-      font-weight: 600;
-      color: #e5c07b;
-      margin-top: 16px;
-      margin-bottom: 6px;
-      text-transform: capitalize;
-    }
-    .prose-outline-heading:first-child {
-      margin-top: 0;
-    }
-    .prose-outline-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .prose-outline-item {
-      padding: 4px 0 4px 16px;
-      font-size: 13px;
-      color: #abb2bf;
-      position: relative;
-    }
-    .prose-outline-item::before {
-      content: "\2022";
-      position: absolute;
-      left: 4px;
-      color: #636d83;
-    }
-    .prose-outline-item:hover {
-      color: #e5c07b;
-    }
-
-    /* Level 2: Explanation blocks */
-    .prose-block {
-      margin: 8px 16px;
-      padding: 12px 16px;
-      border-left: 3px solid #636d83;
-      background: #2c313a;
-      border-radius: 0 6px 6px 0;
-    }
-    .prose-block-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-    .prose-kind-badge {
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      padding: 2px 8px;
-      border-radius: 3px;
-    }
-    .prose-block-name {
+    .book-error-title {
       font-size: 14px;
       font-weight: 600;
-      color: #abb2bf;
+      color: #e06c75;
+      margin-bottom: 8px;
     }
-    .prose-block-body {
-      padding: 0 0 4px 0;
-    }
-    .prose-block-summary {
+    .book-error-message {
       font-size: 13px;
+      color: #e06c75;
       line-height: 1.5;
-      color: #9da5b4;
-    }
-    .prose-block-detail {
-      font-size: 12px;
-      line-height: 1.5;
-      color: #7a8294;
-      margin-top: 4px;
-    }
-    .prose-code-toggle {
-      background: none;
-      border: 1px solid #3a3f4b;
-      color: #636d83;
-      font-size: 11px;
-      padding: 3px 10px;
-      border-radius: 3px;
-      cursor: pointer;
-      margin-top: 4px;
-    }
-    .prose-code-toggle:hover {
-      color: #abb2bf;
-      background: #3a3f4b;
-    }
-    .prose-block .cp-snippet {
-      margin: 8px 0 0 0;
-    }
-
-    /* Level 3: Interleaved */
-    .prose-interleaved {
-      margin: 8px 16px;
-      border-left: 3px solid #636d83;
-      border-radius: 0 6px 6px 0;
-      overflow: hidden;
-    }
-    .prose-interleaved-header {
-      padding: 10px 16px;
-      background: #2c313a;
-      font-size: 13px;
-      color: #abb2bf;
-      border-bottom: 1px solid #21252b;
-    }
-    .prose-interleaved-code {
-      border-bottom: 1px solid #21252b;
-    }
-    .prose-interleaved-code .cm-editor {
-      font-size: 12px;
-      background: #1e2127;
-    }
-    .prose-interleaved-code .cm-editor .cm-scroller {
-      padding: 4px 0;
-    }
-    .prose-interleaved-code .cm-editor .cm-gutters {
-      background: #1e2127;
-      border-right: 1px solid #2c313a;
-    }
-    .prose-interleaved-note {
-      padding: 6px 16px;
-      font-size: 12px;
-      color: #98c379;
-      background: #2c313a;
-      border-bottom: 1px solid #21252b;
-      font-style: italic;
+      background: #e06c7510;
+      padding: 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
   </style>
 </head>
@@ -433,12 +242,6 @@
     <span>Hopper</span>
     <span id="current-file">No file open</span>
     <div class="header-controls">
-      <div class="zoom-control">
-        <button class="zoom-btn" data-level="0">Summary</button>
-        <button class="zoom-btn" data-level="1">Outline</button>
-        <button class="zoom-btn active" data-level="2">Explain</button>
-        <button class="zoom-btn" data-level="3">Code+</button>
-      </div>
       <div class="mode-toggle">
         <button id="mode-reader" class="active">Reader</button>
         <button id="mode-editor">Editor</button>

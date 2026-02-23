@@ -6,8 +6,7 @@ import { svelte } from "@replit/codemirror-lang-svelte"
 import { oneDark } from "@codemirror/theme-one-dark"
 import { EditorState } from "@codemirror/state"
 import { conceptClassifier } from "./concepts"
-import { ProsePanel } from "./prose-panel"
-import type { ZoomLevel } from "./prose-types"
+import { BookPanel } from "./book-panel"
 
 declare global {
   interface Window {
@@ -16,6 +15,7 @@ declare global {
       readFile: (path: string) => Promise<string>
       getHomePath: () => Promise<string>
       showOpenDialog: () => Promise<string | null>
+      listFiles: (rootDir: string) => Promise<string[]>
     }
   }
 }
@@ -37,10 +37,11 @@ function getLangExtension(filename: string) {
 }
 
 let editorView: EditorView | null = null
-let prosePanel: ProsePanel | null = null
+let bookPanel: BookPanel | null = null
 let currentMode: "reader" | "editor" = "reader"
 let currentLangExt: any = []
-let currentZoom: ZoomLevel = 2
+let projectRoot: string = ""
+let projectFiles: string[] = []
 
 function setMode(mode: "reader" | "editor") {
   currentMode = mode
@@ -48,32 +49,18 @@ function setMode(mode: "reader" | "editor") {
   const conceptEl = document.getElementById("concept-tree")!
   const learnBtn = document.getElementById("mode-reader")!
   const editorBtn = document.getElementById("mode-editor")!
-  const zoomControl = document.querySelector(".zoom-control") as HTMLElement | null
 
   if (mode === "reader") {
     editorEl.classList.add("hidden")
     conceptEl.classList.remove("hidden")
     learnBtn.classList.add("active")
     editorBtn.classList.remove("active")
-    if (zoomControl) zoomControl.style.display = "flex"
   } else {
     editorEl.classList.remove("hidden")
     conceptEl.classList.add("hidden")
     learnBtn.classList.remove("active")
     editorBtn.classList.add("active")
-    if (zoomControl) zoomControl.style.display = "none"
   }
-}
-
-function setZoom(level: ZoomLevel) {
-  currentZoom = level
-  if (prosePanel) prosePanel.setZoom(level)
-
-  // Update button states
-  document.querySelectorAll(".zoom-btn").forEach((btn) => {
-    const btnLevel = parseInt((btn as HTMLElement).dataset.level || "2")
-    btn.classList.toggle("active", btnLevel === level)
-  })
 }
 
 function openFile(filePath: string, filename: string) {
@@ -98,9 +85,9 @@ function openFile(filePath: string, filename: string) {
 
     document.getElementById("current-file")!.textContent = filePath
 
-    // Update prose panel after the syntax tree has parsed
-    if (editorView && prosePanel) {
-      setTimeout(() => prosePanel!.update(editorView!, currentLangExt, filename), 200)
+    // Update book panel with file content
+    if (bookPanel) {
+      bookPanel.update(content, filename)
     }
   })
 }
@@ -156,40 +143,25 @@ async function init() {
   const openBtn = document.getElementById("open-folder")!
   const treeContainer = document.getElementById("file-tree")!
 
-  prosePanel = new ProsePanel(document.getElementById("concept-tree")!)
+  bookPanel = new BookPanel(document.getElementById("concept-tree")!)
+  bookPanel.setOnFileClick((relPath) => {
+    if (!projectRoot) return
+    const absPath = projectRoot + "/" + relPath
+    const filename = relPath.split("/").pop() || relPath
+    openFile(absPath, filename)
+  })
 
   // Mode toggle
   document.getElementById("mode-reader")!.addEventListener("click", () => setMode("reader"))
   document.getElementById("mode-editor")!.addEventListener("click", () => setMode("editor"))
 
-  // Zoom controls
-  document.querySelectorAll(".zoom-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const level = parseInt((btn as HTMLElement).dataset.level || "2") as ZoomLevel
-      setZoom(level)
-    })
-  })
-
-  // Keyboard shortcuts: 1-4 keys for zoom levels
-  document.addEventListener("keydown", (e) => {
-    if (currentMode !== "reader") return
-    // Don't intercept if typing in an input
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-    const key = parseInt(e.key)
-    if (key >= 1 && key <= 4) {
-      setZoom((key - 1) as ZoomLevel)
-    }
-  })
-
-  // Listen for zoom-change events from the panel itself
-  document.getElementById("concept-tree")!.addEventListener("zoom-change", ((e: CustomEvent) => {
-    setZoom(e.detail as ZoomLevel)
-  }) as EventListener)
-
   openBtn.addEventListener("click", async () => {
     const dir = await window.fs.showOpenDialog()
     if (dir) {
+      projectRoot = dir
       document.getElementById("folder-name")!.textContent = dir.split("/").pop() || dir
+      projectFiles = await window.fs.listFiles(dir)
+      if (bookPanel) bookPanel.setProjectFiles(projectFiles)
       await renderTree(treeContainer, dir)
     }
   })
