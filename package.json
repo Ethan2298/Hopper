@@ -4,9 +4,9 @@
   "description": "Annotated AST code viewer built on a fork of CodeMirror 6.",
   "main": "main.js",
   "scripts": {
-    "bundle": "./node_modules/.bin/esbuild app/editor.ts --bundle --outfile=app/bundle.js",
-    "start": "npm run bundle && ./node_modules/.bin/electron .",
-    "dev": "npm run bundle && ./node_modules/.bin/electron ."
+    "bundle": "esbuild app/editor.ts --bundle --outfile=app/bundle.js",
+    "start": "npm run bundle && electron .",
+    "dev": "npm run bundle && electron ."
   },
   "repository": {
     "type": "git",
