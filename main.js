@@ -1,10 +1,37 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron")
+const { app, BrowserWindow, ipcMain, dialog, Menu, nativeTheme } = require("electron")
 const path = require("path")
 const fs = require("fs")
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 
-// Load .env file from project root
+// --- Settings persistence ---
+
+const settingsPath = path.join(app.getPath("userData"), "settings.json")
+
+function readSettings() {
+  try {
+    return JSON.parse(fs.readFileSync(settingsPath, "utf-8"))
+  } catch {
+    return {}
+  }
+}
+
+function writeSettings(settings) {
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2))
+}
+
+function getThemeSetting() {
+  return readSettings().theme || "system"
+}
+
+function setThemeSetting(value) {
+  const settings = readSettings()
+  settings.theme = value
+  writeSettings(settings)
+}
+
+// --- .env loading ---
+
 const envPath = path.join(__dirname, ".env")
 if (fs.existsSync(envPath)) {
   for (const line of fs.readFileSync(envPath, "utf-8").split("\n")) {
@@ -18,8 +45,108 @@ if (fs.existsSync(envPath)) {
   }
 }
 
+// --- Menu ---
+
+let win = null
+
+function buildAppMenu() {
+  const themeSetting = getThemeSetting()
+
+  const template = [
+    {
+      label: "File",
+      submenu: [
+        { role: "close" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+      ],
+    },
+    {
+      label: "View",
+      submenu: [
+        {
+          label: "Appearance",
+          submenu: [
+            {
+              label: "Light",
+              type: "radio",
+              checked: themeSetting === "light",
+              click: () => applyTheme("light"),
+            },
+            {
+              label: "Dark",
+              type: "radio",
+              checked: themeSetting === "dark",
+              click: () => applyTheme("dark"),
+            },
+            {
+              label: "System",
+              type: "radio",
+              checked: themeSetting === "system",
+              click: () => applyTheme("system"),
+            },
+          ],
+        },
+        { type: "separator" },
+        { role: "toggleDevTools" },
+      ],
+    },
+  ]
+
+  // macOS app menu
+  if (process.platform === "darwin") {
+    template.unshift({
+      label: app.name,
+      submenu: [
+        { role: "about" },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    })
+  }
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
+function applyTheme(setting) {
+  setThemeSetting(setting)
+
+  // Map to Electron's nativeTheme
+  if (setting === "system") {
+    nativeTheme.themeSource = "system"
+  } else {
+    nativeTheme.themeSource = setting
+  }
+
+  // Notify renderer
+  if (win && !win.isDestroyed()) {
+    win.webContents.send("set-theme", setting)
+  }
+
+  // Rebuild menu to update radio state
+  buildAppMenu()
+}
+
+// --- Window ---
+
 function createWindow() {
-  const win = new BrowserWindow({
+  win = new BrowserWindow({
     width: 1200,
     height: 800,
     title: "Hopper",
@@ -31,7 +158,17 @@ function createWindow() {
   })
 
   win.loadFile(path.join(__dirname, "app", "index.html"))
+
+  win.on("closed", () => {
+    win = null
+  })
 }
+
+// --- IPC handlers ---
+
+ipcMain.handle("get-theme", () => {
+  return getThemeSetting()
+})
 
 ipcMain.handle("read-dir", async (_event, dirPath) => {
   const entries = fs.readdirSync(dirPath, { withFileTypes: true })
@@ -152,7 +289,20 @@ Do not wrap your response in any special formatting. Just write the prose direct
   }
 })
 
-app.whenReady().then(createWindow)
+// --- App lifecycle ---
+
+app.whenReady().then(() => {
+  // Apply persisted theme on startup
+  const themeSetting = getThemeSetting()
+  if (themeSetting === "system") {
+    nativeTheme.themeSource = "system"
+  } else {
+    nativeTheme.themeSource = themeSetting
+  }
+
+  buildAppMenu()
+  createWindow()
+})
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit()

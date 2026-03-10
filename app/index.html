@@ -3,30 +3,60 @@
 <head>
   <meta charset="utf-8">
   <title>Hopper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&family=Literata:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
   <style>
+    :root, [data-theme="dark"] {
+      --bg: #181816; --text: #c4c0b8;
+      --header-bg: #131311; --header-border: #2a2924; --header-title: #888578;
+      --sidebar-bg: #131311; --sidebar-border: #2a2924; --sidebar-text: #888578; --sidebar-label: #666358;
+      --btn-border: #2a2924; --btn-text: #888578;
+      --toggle-bg: #0e0e0c; --toggle-text: #666358; --toggle-active-bg: #222118; --toggle-active-text: #c4c0b8;
+      --tree-hover: #1e1e1a; --tree-active-bg: #1e1e1a; --tree-active-text: #c4c0b8;
+      --accent: #d4845a; --link: #6a9e8e;
+      --title-text: #d8d4cc; --prose-text: #aaa69e; --muted: #666358;
+      --tooltip-bg: #131311; --tooltip-border: #2a2924;
+      --error: #e06c75; --loading-dot: #d4845a;
+      --folder-icon: #b8a070;
+    }
+    [data-theme="light"] {
+      --bg: #faf8f5; --text: #1a1a18;
+      --header-bg: #f0ede8; --header-border: #e0dcd5; --header-title: #6b6860;
+      --sidebar-bg: #f0ede8; --sidebar-border: #e0dcd5; --sidebar-text: #6b6860; --sidebar-label: #999590;
+      --btn-border: #d0ccc5; --btn-text: #999590;
+      --toggle-bg: #e0dcd5; --toggle-text: #999590; --toggle-active-bg: #faf8f5; --toggle-active-text: #1a1a18;
+      --tree-hover: #e8e4dd; --tree-active-bg: #e8e4dd; --tree-active-text: #1a1a18;
+      --accent: #b35c2a; --link: #3d6b5e;
+      --title-text: #1a1a18; --prose-text: #2d2d2a; --muted: #999590;
+      --tooltip-bg: #f0ede8; --tooltip-border: #e0dcd5;
+      --error: #c44; --loading-dot: #b35c2a;
+      --folder-icon: #8a7e6e;
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background: #282c34;
-      color: #abb2bf;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       height: 100vh;
       display: flex;
       flex-direction: column;
     }
     header {
       padding: 8px 20px;
-      background: #21252b;
-      border-bottom: 1px solid #181a1f;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--header-border);
       font-size: 12px;
-      color: #636d83;
+      color: var(--header-title);
       -webkit-app-region: drag;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
     #current-file {
-      font-family: monospace;
-      color: #9da5b4;
+      font-family: "Fira Code", "SF Mono", Menlo, monospace;
+      color: var(--sidebar-text);
     }
     .header-controls {
       display: flex;
@@ -43,8 +73,8 @@
     .sidebar {
       width: 250px;
       min-width: 180px;
-      background: #21252b;
-      border-right: 1px solid #181a1f;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--sidebar-border);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -55,23 +85,23 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      color: #636d83;
+      color: var(--sidebar-label);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid #181a1f;
+      border-bottom: 1px solid var(--sidebar-border);
     }
     #open-folder {
       background: none;
-      border: 1px solid #3a3f4b;
-      color: #abb2bf;
+      border: 1px solid var(--btn-border);
+      color: var(--btn-text);
       font-size: 11px;
       padding: 2px 8px;
       border-radius: 3px;
       cursor: pointer;
       -webkit-app-region: no-drag;
     }
-    #open-folder:hover { background: #3a3f4b; }
+    #open-folder:hover { background: var(--tree-hover); }
     #file-tree {
       flex: 1;
       overflow-y: auto;
@@ -87,15 +117,19 @@
       align-items: center;
       white-space: nowrap;
       user-select: none;
+      color: var(--sidebar-text);
     }
-    .tree-item:hover { background: #2c313a; }
-    .tree-file.active { background: #2c313a; color: #e5c07b; }
+    .tree-item:hover { background: var(--tree-hover); }
+    .tree-file.active { background: var(--tree-active-bg); color: var(--tree-active-text); }
     .tree-icon {
       width: 16px;
       font-size: 10px;
-      color: #636d83;
+      color: var(--muted);
       flex-shrink: 0;
       text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .tree-name { margin-left: 4px; }
     .tree-children { padding-left: 12px; }
@@ -104,7 +138,7 @@
     .mode-toggle {
       display: flex;
       gap: 2px;
-      background: #181a1f;
+      background: var(--toggle-bg);
       border-radius: 4px;
       padding: 2px;
       -webkit-app-region: no-drag;
@@ -112,16 +146,16 @@
     .mode-toggle button {
       background: none;
       border: none;
-      color: #636d83;
+      color: var(--toggle-text);
       font-size: 11px;
       padding: 3px 10px;
       border-radius: 3px;
       cursor: pointer;
     }
-    .mode-toggle button:hover { color: #abb2bf; }
+    .mode-toggle button:hover { color: var(--text); }
     .mode-toggle button.active {
-      background: #2c313a;
-      color: #abb2bf;
+      background: var(--toggle-active-bg);
+      color: var(--toggle-active-text);
     }
 
     /* Editor */
@@ -146,7 +180,7 @@
       align-items: center;
       justify-content: center;
       height: 100%;
-      color: #636d83;
+      color: var(--muted);
       font-size: 14px;
     }
 
@@ -158,19 +192,19 @@
       margin: 0 auto;
     }
     .book-title {
-      font-family: Georgia, "Times New Roman", serif;
+      font-family: Literata, Georgia, "Times New Roman", serif;
       font-size: 26px;
       font-weight: normal;
       font-style: italic;
-      color: #d4d4d4;
+      color: var(--title-text);
       margin-bottom: 28px;
       text-align: center;
     }
     .book-paragraph {
-      font-family: Georgia, "Times New Roman", serif;
+      font-family: Literata, Georgia, "Times New Roman", serif;
       font-size: 15px;
       line-height: 1.85;
-      color: #bcc2cd;
+      color: var(--prose-text);
       margin-bottom: 0;
       text-indent: 1.5em;
     }
@@ -178,28 +212,28 @@
       text-indent: 0;
     }
     .book-file-link {
-      color: #61afef;
+      color: var(--link);
       text-decoration: none;
       cursor: pointer;
     }
     .book-file-link:hover {
       text-decoration: underline;
     }
-    /* Code-linked highlights — like [[wikilinks]] */
+    /* Code-linked highlights */
     .book-code-highlight {
-      color: #e5c07b;
+      color: var(--accent);
       cursor: default;
     }
     .book-code-highlight:hover {
-      color: #f0d48b;
+      opacity: 0.8;
     }
 
     /* Code tooltip */
     .book-code-tooltip {
       position: fixed;
       display: none;
-      background: #1e2127;
-      border: 1px solid #3a3f4b;
+      background: var(--tooltip-bg);
+      border: 1px solid var(--tooltip-border);
       border-radius: 4px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
       padding: 10px 14px;
@@ -210,18 +244,18 @@
       pointer-events: none;
     }
     .book-code-tooltip pre {
-      font-family: "SF Mono", "Fira Code", Menlo, monospace;
+      font-family: "Fira Code", "SF Mono", Menlo, monospace;
       font-size: 12px;
-      color: #abb2bf;
+      color: var(--text);
       white-space: pre-wrap;
       margin: 0;
     }
 
     .book-truncated-note {
-      font-family: Georgia, "Times New Roman", serif;
+      font-family: Literata, Georgia, "Times New Roman", serif;
       font-size: 13px;
       font-style: italic;
-      color: #848b98;
+      color: var(--muted);
       text-align: center;
       margin-bottom: 20px;
     }
@@ -232,13 +266,13 @@
       align-items: center;
       gap: 10px;
       padding: 32px;
-      color: #636d83;
+      color: var(--muted);
       font-size: 14px;
     }
     .book-loading-dot {
       width: 8px;
       height: 8px;
-      background: #61afef;
+      background: var(--loading-dot);
       border-radius: 50%;
       animation: book-pulse 1s ease-in-out infinite;
     }
@@ -254,28 +288,28 @@
     .book-error-title {
       font-size: 14px;
       font-weight: 600;
-      color: #e06c75;
+      color: var(--error);
       margin-bottom: 8px;
     }
     .book-error-message {
       font-size: 13px;
-      color: #e06c75;
+      color: var(--error);
       line-height: 1.5;
-      background: #e06c7510;
+      background: color-mix(in srgb, var(--error) 6%, transparent);
       padding: 12px;
       border-radius: 4px;
-      font-family: monospace;
+      font-family: "Fira Code", "SF Mono", Menlo, monospace;
       white-space: pre-wrap;
       word-break: break-word;
     }
 
-    /* Symbol references — like @mentions */
+    /* Symbol references */
     .book-symbol-ref {
-      color: #e5c07b;
+      color: var(--accent);
       cursor: default;
     }
     .book-symbol-ref:hover {
-      color: #f0d48b;
+      opacity: 0.8;
     }
   </style>
 </head>

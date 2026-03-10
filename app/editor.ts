@@ -3,10 +3,10 @@ import { javascript } from "@codemirror/lang-javascript"
 import { python } from "@codemirror/lang-python"
 import { rust } from "@codemirror/lang-rust"
 import { svelte } from "@replit/codemirror-lang-svelte"
-import { oneDark } from "@codemirror/theme-one-dark"
 import { EditorState } from "@codemirror/state"
 import { conceptClassifier } from "./concepts"
 import { BookPanel } from "./book-panel"
+import { initTheme, themeCompartment, getEditorTheme, getResolvedTheme, setEditorView, fileIcon } from "./theme"
 
 declare global {
   interface Window {
@@ -16,6 +16,10 @@ declare global {
       getHomePath: () => Promise<string>
       showOpenDialog: () => Promise<string | null>
       listFiles: (rootDir: string) => Promise<string[]>
+    }
+    theme: {
+      onChange: (cb: (setting: string) => void) => void
+      getCurrent: () => Promise<string>
     }
   }
 }
@@ -67,20 +71,23 @@ function openFile(filePath: string, filename: string) {
   window.fs.readFile(filePath).then((content) => {
     const parent = document.getElementById("editor")!
     currentLangExt = getLangExtension(filename)
+    const resolved = getResolvedTheme()
 
     if (editorView) {
       editorView.setState(
         EditorState.create({
           doc: content,
-          extensions: [basicSetup, currentLangExt, oneDark, conceptClassifier()],
+          extensions: [basicSetup, currentLangExt, themeCompartment.of(getEditorTheme(resolved)), conceptClassifier()],
         })
       )
+      setEditorView(editorView)
     } else {
       editorView = new EditorView({
         doc: content,
-        extensions: [basicSetup, currentLangExt, oneDark, conceptClassifier()],
+        extensions: [basicSetup, currentLangExt, themeCompartment.of(getEditorTheme(resolved)), conceptClassifier()],
         parent,
       })
+      setEditorView(editorView)
     }
 
     document.getElementById("current-file")!.textContent = filePath
@@ -103,7 +110,7 @@ async function renderTree(container: HTMLElement, dirPath: string) {
     el.className = "tree-item"
 
     if (entry.isDir) {
-      el.innerHTML = `<span class="tree-icon">&#9654;</span><span class="tree-name">${entry.name}</span>`
+      el.innerHTML = `<span class="tree-icon">${fileIcon(entry.name, true, false)}</span><span class="tree-name">${entry.name}</span>`
       el.classList.add("tree-dir")
       const children = document.createElement("div")
       children.className = "tree-children"
@@ -118,13 +125,13 @@ async function renderTree(container: HTMLElement, dirPath: string) {
         }
         const open = children.style.display !== "none"
         children.style.display = open ? "none" : "block"
-        el.querySelector(".tree-icon")!.innerHTML = open ? "&#9654;" : "&#9660;"
+        el.querySelector(".tree-icon")!.innerHTML = fileIcon(entry.name, true, !open)
       })
 
       container.appendChild(el)
       container.appendChild(children)
     } else {
-      el.innerHTML = `<span class="tree-icon tree-file-icon">&#9643;</span><span class="tree-name">${entry.name}</span>`
+      el.innerHTML = `<span class="tree-icon tree-file-icon">${fileIcon(entry.name, false)}</span><span class="tree-name">${entry.name}</span>`
       el.classList.add("tree-file")
       el.addEventListener("click", (e) => {
         e.stopPropagation()
@@ -140,6 +147,8 @@ async function renderTree(container: HTMLElement, dirPath: string) {
 // --- Init ---
 
 async function init() {
+  initTheme()
+
   const openBtn = document.getElementById("open-folder")!
   const treeContainer = document.getElementById("file-tree")!
 
