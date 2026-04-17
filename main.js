@@ -41,8 +41,12 @@ function validateBookOutline(outline, lineCount) {
       errors.push(`function "${fn.name}": signatureLine out of range`)
       continue
     }
-    if (!Array.isArray(fn.bullets) || fn.bullets.length === 0) {
-      errors.push(`function "${fn.name}": no bullets`)
+    if (!Array.isArray(fn.bullets)) {
+      errors.push(`function "${fn.name}": bullets is not an array`)
+      continue
+    }
+    if (fn.bullets.length === 0) {
+      // Declaration-only (single-line type alias, bare var). Valid.
       continue
     }
     const sorted = [...fn.bullets].sort((a, b) => a.fromLine - b.fromLine)
@@ -79,9 +83,9 @@ function parseBookOutlineResponse(text) {
   const fenceMatch = body.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/)
   if (fenceMatch) body = fenceMatch[1].trim()
   try {
-    return { outline: JSON.parse(body) }
+    return { outline: JSON.parse(body), rawText: text }
   } catch (err) {
-    return { parseError: err.message }
+    return { parseError: err.message, rawText: text }
   }
 }
 
@@ -288,14 +292,15 @@ type Bullet = {
 }
 
 Rules:
-1. Include one FunctionOutline per top-level function, method, class method, or class body. Do not skip any.
+1. Include one FunctionOutline per top-level declaration. This includes: functions, methods, class bodies, interface declarations, type aliases, enums, and significant top-level variable or constant declarations. Do not skip any.
 2. "signatureLine" is the 1-based line of the declaration (where the name appears). Do NOT include it in any bullet's range.
-3. For each function, produce 4–8 bullets. Very short functions may have 1–3 bullets. Very long functions may have up to 10.
-4. Bullets must PARTITION the function body with no gaps and no overlaps. The first bullet starts at signatureLine+1, each subsequent bullet starts at the previous bullet's toLine+1, and the last bullet ends at the last line of the function body (the closing brace line inclusive, if present).
-5. Each "text" is concise prose describing what that section of code does, NOT a restatement of the code. Prefer <= 120 chars.
-6. Label boilerplate (function entry, trivial variable setup, trivial returns) as kind: "chrome". Label meaningful logic as kind: "semantic".
-7. Produce a one-sentence "oneLineSummary" for each function describing its purpose.
-8. If the file has import/use/require statements, include an "imports" object with a one-line summary and the range covering all of them.
+3. For each multi-line declaration body, produce 4–8 bullets. Very short bodies may have 1–3 bullets. Very long ones may have up to 10.
+4. Bullets must PARTITION the declaration's body with no gaps and no overlaps. The first bullet starts at signatureLine+1, each subsequent bullet starts at the previous bullet's toLine+1, and the last bullet ends at the last line of the declaration body (the closing brace line inclusive, if present).
+5. **For single-line declarations** (e.g. \`export type X = ...\` on one line, \`const Y = 1\`, single-line interfaces), return bullets as an empty array \`[]\`. The "oneLineSummary" alone describes the declaration.
+6. Each bullet "text" is concise prose describing what that section of code does, NOT a restatement of the code. Prefer <= 120 chars.
+7. Label boilerplate (function entry, trivial variable setup, trivial returns) as kind: "chrome". Label meaningful logic as kind: "semantic".
+8. Produce a one-sentence "oneLineSummary" for each declaration describing its purpose.
+9. If the file has import/use/require statements, include an "imports" object with a one-line summary and the range covering all of them.
 
 Output: JSON object only. No commentary.`
 
@@ -338,6 +343,10 @@ Output: JSON object only. No commentary.`
       : { ok: false, errors: [`parse failed: ${result.parseError || "unknown"}`] }
 
     if (!validation.ok) {
+      console.log(`[book] ${filename} attempt 1 failed validation:`, validation.errors.slice(0, 4))
+      if (result.parseError) {
+        console.log(`[book] ${filename} raw response (first 500 chars):`, result.rawText?.slice(0, 500))
+      }
       // One retry
       result = await runOnce()
       if (result.httpError) return { error: result.httpError }
@@ -347,6 +356,13 @@ Output: JSON object only. No commentary.`
     }
 
     if (!validation.ok) {
+      console.log(`[book] ${filename} attempt 2 failed validation:`, validation.errors.slice(0, 4))
+      if (result.parseError) {
+        console.log(`[book] ${filename} raw response (first 500 chars):`, result.rawText?.slice(0, 500))
+      }
+      if (result.outline) {
+        console.log(`[book] ${filename} outline that failed validation:`, JSON.stringify(result.outline).slice(0, 800))
+      }
       return { outline: fallbackOutline(content), truncated, fallback: true, errors: validation.errors }
     }
 

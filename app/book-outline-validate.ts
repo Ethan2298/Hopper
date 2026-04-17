@@ -25,7 +25,8 @@ export function validateBookOutline(
       continue
     }
     if (fn.bullets.length === 0) {
-      errors.push(`function "${fn.name}": no bullets`)
+      // Empty bullets means "declaration-only, no body to partition"
+      // (e.g. single-line type aliases, bare variable declarations).
       continue
     }
 
