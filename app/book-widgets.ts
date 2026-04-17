@@ -20,11 +20,12 @@ export class CardWidget extends WidgetType {
   }
 
   eq(other: CardWidget) {
-    return (
-      other.fn === this.fn &&
-      other.level === this.level &&
-      other.expandedBulletIds === this.expandedBulletIds
-    )
+    if (other.fn !== this.fn || other.level !== this.level) return false
+    if (other.expandedBulletIds.size !== this.expandedBulletIds.size) return false
+    for (const id of this.expandedBulletIds) {
+      if (!other.expandedBulletIds.has(id)) return false
+    }
+    return true
   }
 
   toDOM() {
