@@ -51,3 +51,29 @@ export interface AnnotatedFile {
   nodes: AnnotatedNode[]
 }
 
+export type BulletKind = "semantic" | "chrome"
+
+export interface Bullet {
+  text: string
+  kind: BulletKind
+  fromLine: number
+  toLine: number
+}
+
+export interface FunctionOutline {
+  name: string
+  signatureLine: number
+  oneLineSummary: string
+  bullets: Bullet[]
+}
+
+export interface ImportOutline {
+  oneLineSummary: string
+  fromLine: number
+  toLine: number
+}
+
+export interface BookOutline {
+  functions: FunctionOutline[]
+  imports?: ImportOutline
+}
