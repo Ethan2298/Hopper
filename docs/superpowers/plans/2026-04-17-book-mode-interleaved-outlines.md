@@ -1,5 +1,7 @@
 # Book Mode Implementation Plan
 
+> **Post-implementation addendum (shipped 2026-04-17):** This plan is kept as-is for historical record, but the shipped implementation diverged significantly. Key deltas: the coverage invariant and validator were dropped; the LLM emits prose only (no line numbers); zoom collapsed from three levels to two (card-collapsed / card-expanded); decorations are provided via a `StateField` rather than a `ViewPlugin`; the IPC handler is `describe-book-outline`, not `describe-file`. The "as-shipped" design delta is documented at the top of the companion spec (`../specs/2026-04-17-book-mode-interleaved-outlines-design.md`). Read this plan for the original intent; read [CLAUDE.md](../../../CLAUDE.md) for what actually runs.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace Hopper's existing Reader mode with a prose-first, three-level-zoom "Book mode" that renders a source file as collapsible NL bullets layered over the real code via CodeMirror decorations. Read-only (Phase 1).

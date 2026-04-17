@@ -1,5 +1,16 @@
 # Book Mode: Interleaved NL Outlines
 
+> **Post-implementation addendum (2026-04-17 — shipped):** The implementation diverged from this design in important ways. This document describes the original vision; the shipped system is smaller. Treat this doc as historical context, not as a description of current behavior. See [CLAUDE.md](../../../CLAUDE.md) for what actually ships.
+>
+> **What changed during implementation:**
+> - **AST owns line ranges; the LLM owns prose only.** The original design had the LLM emit per-bullet `fromLine`/`toLine` spans with a coverage invariant enforced by a validator. In practice LLMs miscount lines; the shipped pipeline extracts units (imports, top-level decls) with Lezer, sends their `{ index, kind, name, isMultiLine, source }` to the LLM, and gets back `{ oneLineSummary, bullets: [{ text, kind }] }` per unit. No line numbers cross the boundary. The validator and `FunctionOutline` type were removed.
+> - **Two zoom levels, not three.** Collapsed card (summary only) and expanded card (summary + bullets + native code below). No per-bullet click-to-expand-source; bullets are static text.
+> - **Block decorations via `StateField`, not `ViewPlugin`.** Required for block `Decoration.replace` ranges to survive across transactions without races.
+> - **Retired modules:** `book-panel.ts`, `book-structure.ts`, `ai-prose.ts`, `prose-panel.ts`, `prose-provider.ts`, `concept-panel.ts`, and the `describe-file` IPC handler are all gone. Their replacements are `book-units.ts`, `book-outline.ts`, `book-decorations.ts`, `book-widgets.ts`, `book-view.ts`, and the `describe-book-outline` IPC handler.
+> - **LLM payload is JSON, not XML-like tags.** To avoid injection via identifier names, the renderer sends `JSON.stringify({ filename, units })` and the system prompt tells the model to treat all string fields as data.
+>
+> ---
+
 **Status:** Draft
 **Date:** 2026-04-17
 **Scope:** Replace Hopper's existing "Reader mode" (whole-file narrative prose) with a paper-inspired *Book mode* that renders a source file as collapsible natural-language bullets over the real code. Read-only (Phase 1).
