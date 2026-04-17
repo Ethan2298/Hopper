@@ -1,27 +1,26 @@
-import type { BookOutline } from "./prose-types"
-import { validateBookOutline } from "./book-outline-validate"
+import type { EditorView } from "@codemirror/view"
+import type { ReaderUnit, UnitProse, BookReaderOutline } from "./prose-types"
+import { extractReaderUnits } from "./book-units"
 
 declare global {
   interface Window {
     ai: {
       describeBookOutline: (opts: {
         filename: string
-        fileContent: string
+        units: ReaderUnit[]
       }) => Promise<{
-        outline?: BookOutline
+        prose?: Record<number, UnitProse>
         error?: string
-        truncated?: boolean
         fallback?: boolean
-        errors?: string[]
       }>
     }
   }
 }
 
-const CACHE_VERSION = "v1-book"
+const CACHE_VERSION = "v2-book"
 const MAX_CONTENT_SIZE = 30_000
 
-const cache = new Map<string, BookOutline>()
+const cache = new Map<string, BookReaderOutline>()
 
 async function hashKey(filename: string, content: string): Promise<string> {
   const data = new TextEncoder().encode(CACHE_VERSION + "\0" + filename + "\0" + content)
@@ -32,13 +31,19 @@ async function hashKey(filename: string, content: string): Promise<string> {
 }
 
 export interface FetchResult {
-  outline?: BookOutline
+  outline?: BookReaderOutline
   error?: string
   truncated?: boolean
   fallback?: boolean
 }
 
+/**
+ * Extract AST units from the view, ask the LLM for prose per unit,
+ * zip them into a BookReaderOutline. Line numbers are ours;
+ * the LLM only supplies prose.
+ */
 export async function fetchBookOutline(
+  view: EditorView,
   filename: string,
   content: string
 ): Promise<FetchResult> {
@@ -46,29 +51,21 @@ export async function fetchBookOutline(
   const cached = cache.get(key)
   if (cached) return { outline: cached }
 
-  let fileContent = content
-  let truncated = false
-  if (fileContent.length > MAX_CONTENT_SIZE) {
-    fileContent = fileContent.slice(0, MAX_CONTENT_SIZE)
-    truncated = true
+  const truncated = content.length > MAX_CONTENT_SIZE
+
+  const units = extractReaderUnits(view, filename)
+  if (units.length === 0) {
+    // No recognizable top-level structure — nothing to render.
+    const outline: BookReaderOutline = { units: [], prose: {} }
+    cache.set(key, outline)
+    return { outline, truncated }
   }
 
-  const res = await window.ai.describeBookOutline({ filename, fileContent })
-  if (res.error) return { error: res.error, truncated: truncated || res.truncated }
-  if (!res.outline) return { error: "Empty outline response" }
+  const res = await window.ai.describeBookOutline({ filename, units })
+  if (res.error) return { error: res.error, truncated }
 
-  // Defensive revalidation on client (catches stale cache across schema bumps).
-  const lineCount = fileContent.split("\n").length
-  const v = validateBookOutline(res.outline, lineCount)
-  if (!v.ok && !res.fallback) {
-    // Main process should have retried; if still invalid, surface error.
-    return { error: `Invalid outline: ${v.errors[0]}` }
-  }
-
-  cache.set(key, res.outline)
-  return {
-    outline: res.outline,
-    truncated: truncated || res.truncated,
-    fallback: res.fallback,
-  }
+  const prose = res.prose || {}
+  const outline: BookReaderOutline = { units, prose }
+  cache.set(key, outline)
+  return { outline, truncated, fallback: res.fallback }
 }

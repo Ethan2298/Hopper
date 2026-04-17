@@ -1,40 +1,38 @@
 import { WidgetType } from "@codemirror/view"
-import type { FunctionOutline, Bullet, ImportOutline } from "./prose-types"
+import type { ReaderUnit, UnitProse, ProseBullet } from "./prose-types"
 
 /**
- * Level 0 / Level 1 card widget for a function.
- * - level=0: card only (compact); code body is hidden.
- * - level=1: card with all bullets listed below it (bullets collapsed).
- * The card itself is the single clickable target that toggles L0 <-> L1.
+ * Unit card widget.
+ * - level=0 (collapsed): card only; code body is hidden.
+ * - level=1 (expanded): card with bullets listed below the summary.
+ *   When expanded, the caller drops the body-hiding replace decoration
+ *   so the raw code renders natively beneath this widget.
  */
 export class CardWidget extends WidgetType {
   constructor(
-    readonly fn: FunctionOutline,
+    readonly unit: ReaderUnit,
+    readonly prose: UnitProse | undefined,
     readonly level: 0 | 1,
-    readonly expandedBulletIds: Set<number>,
-    readonly onToggleFunction: (fnName: string) => void,
-    readonly onToggleBullet: (fnName: string, bulletIdx: number) => void,
-    readonly signatureText: string
+    readonly onToggle: (unitIndex: number) => void
   ) {
     super()
   }
 
   eq(other: CardWidget) {
-    if (other.fn !== this.fn || other.level !== this.level) return false
-    if (other.expandedBulletIds.size !== this.expandedBulletIds.size) return false
-    for (const id of this.expandedBulletIds) {
-      if (!other.expandedBulletIds.has(id)) return false
-    }
-    return true
+    return (
+      other.unit === this.unit &&
+      other.prose === this.prose &&
+      other.level === this.level
+    )
   }
 
   toDOM() {
     const root = document.createElement("div")
-    root.className = `bm-card bm-card-l${this.level}`
+    root.className = `bm-card bm-card-l${this.level} bm-card-${this.unit.kind}`
+    root.addEventListener("click", () => this.onToggle(this.unit.index))
 
     const head = document.createElement("div")
     head.className = "bm-card-head"
-    head.addEventListener("click", () => this.onToggleFunction(this.fn.name))
 
     const chev = document.createElement("span")
     chev.className = "bm-chev"
@@ -43,90 +41,50 @@ export class CardWidget extends WidgetType {
 
     const sig = document.createElement("code")
     sig.className = "bm-signature"
-    sig.textContent = this.signatureText
+    sig.textContent = this.signatureLabel()
     head.appendChild(sig)
 
     const summary = document.createElement("p")
     summary.className = "bm-summary"
-    summary.textContent = this.fn.oneLineSummary
+    summary.textContent = this.prose?.oneLineSummary || ""
     head.appendChild(summary)
 
     root.appendChild(head)
 
-    if (this.level === 1) {
+    if (this.level === 1 && this.prose && this.prose.bullets.length > 0) {
       const list = document.createElement("ul")
       list.className = "bm-bullets"
-      this.fn.bullets.forEach((b, idx) => {
-        list.appendChild(this.renderBullet(b, idx))
-      })
+      for (const b of this.prose.bullets) {
+        list.appendChild(this.renderBullet(b))
+      }
       root.appendChild(list)
     }
 
     return root
   }
 
-  private renderBullet(bullet: Bullet, idx: number) {
+  private signatureLabel(): string {
+    // Prefer the first line of the unit's source as its header label.
+    const firstLine = (this.unit.source || "").split("\n")[0].trim()
+    if (firstLine) return firstLine
+    return `${this.unit.kind} ${this.unit.name}`
+  }
+
+  private renderBullet(bullet: ProseBullet) {
     const li = document.createElement("li")
     li.className = `bm-bullet bm-bullet-${bullet.kind}`
-    if (this.expandedBulletIds.has(idx)) li.classList.add("bm-bullet-open")
 
-    const chev = document.createElement("span")
-    chev.className = "bm-chev"
-    chev.textContent = this.expandedBulletIds.has(idx) ? "▾" : "▸"
-    li.appendChild(chev)
+    const dot = document.createElement("span")
+    dot.className = "bm-bullet-dot"
+    dot.textContent = "•"
+    li.appendChild(dot)
 
     const text = document.createElement("span")
     text.className = "bm-bullet-text"
     text.textContent = bullet.text
     li.appendChild(text)
 
-    li.addEventListener("click", (e) => {
-      e.stopPropagation()
-      this.onToggleBullet(this.fn.name, idx)
-    })
-
     return li
-  }
-
-  ignoreEvent() {
-    return false
-  }
-}
-
-/**
- * Import summary bullet, rendered at the top of the file.
- * Has its own simple click-to-toggle behavior managed by the decoration plugin.
- */
-export class ImportWidget extends WidgetType {
-  constructor(
-    readonly imp: ImportOutline,
-    readonly expanded: boolean,
-    readonly onToggle: () => void
-  ) {
-    super()
-  }
-
-  eq(other: ImportWidget) {
-    return other.imp === this.imp && other.expanded === this.expanded
-  }
-
-  toDOM() {
-    const root = document.createElement("div")
-    root.className = "bm-imports"
-    if (this.expanded) root.classList.add("bm-imports-open")
-
-    const chev = document.createElement("span")
-    chev.className = "bm-chev"
-    chev.textContent = this.expanded ? "▾" : "▸"
-    root.appendChild(chev)
-
-    const text = document.createElement("span")
-    text.className = "bm-imports-text"
-    text.textContent = this.imp.oneLineSummary
-    root.appendChild(text)
-
-    root.addEventListener("click", () => this.onToggle())
-    return root
   }
 
   ignoreEvent() {

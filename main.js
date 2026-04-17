@@ -21,94 +21,55 @@ if (fs.existsSync(envPath)) {
 
 // --- Book outline helpers ---
 
-const MAX_BOOK_CONTENT = 30_000
+const MAX_UNIT_SOURCE = 8_000
 
 /**
- * Coverage-invariant validator. Mirrors app/book-outline-validate.ts.
- * Returns { ok: boolean, errors: string[] }.
+ * Parse the LLM's JSON response. Strip optional ```json fences.
+ * Returns { prose: UnitProse[], rawText } or { parseError, rawText }.
  */
-function validateBookOutline(outline, lineCount) {
-  const errors = []
-  if (!outline || !Array.isArray(outline.functions)) {
-    return { ok: false, errors: ["outline missing functions array"] }
-  }
-  for (const fn of outline.functions) {
-    if (!fn || typeof fn.name !== "string" || typeof fn.signatureLine !== "number") {
-      errors.push("function missing name or signatureLine")
-      continue
-    }
-    if (fn.signatureLine < 1 || fn.signatureLine > lineCount) {
-      errors.push(`function "${fn.name}": signatureLine out of range`)
-      continue
-    }
-    if (!Array.isArray(fn.bullets)) {
-      errors.push(`function "${fn.name}": bullets is not an array`)
-      continue
-    }
-    if (fn.bullets.length === 0) {
-      // Declaration-only (single-line type alias, bare var). Valid.
-      continue
-    }
-    const sorted = [...fn.bullets].sort((a, b) => a.fromLine - b.fromLine)
-    const bodyStart = fn.signatureLine + 1
-    if (sorted[0].fromLine !== bodyStart) {
-      errors.push(`function "${fn.name}": first bullet starts at ${sorted[0].fromLine}, expected ${bodyStart}`)
-    }
-    for (let i = 1; i < sorted.length; i++) {
-      const expected = sorted[i - 1].toLine + 1
-      if (sorted[i].fromLine !== expected) {
-        errors.push(`function "${fn.name}": bullet ${i} starts at ${sorted[i].fromLine}, expected ${expected}`)
-      }
-    }
-    for (const b of sorted) {
-      if (b.fromLine > b.toLine) errors.push(`function "${fn.name}": bullet has fromLine > toLine`)
-      if (b.toLine > lineCount) errors.push(`function "${fn.name}": bullet toLine ${b.toLine} > lineCount ${lineCount}`)
-    }
-  }
-  if (outline.imports) {
-    const imp = outline.imports
-    if (imp.fromLine < 1 || imp.toLine > lineCount || imp.fromLine > imp.toLine) {
-      errors.push(`imports: invalid range [${imp.fromLine}, ${imp.toLine}]`)
-    }
-  }
-  return { ok: errors.length === 0, errors }
-}
-
-/**
- * Post-process the LLM response: strip any ```json fences, parse, and return.
- * Returns { outline, parseError }.
- */
-function parseBookOutlineResponse(text) {
+function parseProseResponse(text) {
   let body = text.trim()
   const fenceMatch = body.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/)
   if (fenceMatch) body = fenceMatch[1].trim()
   try {
-    return { outline: JSON.parse(body), rawText: text }
+    const parsed = JSON.parse(body)
+    return { prose: Array.isArray(parsed?.prose) ? parsed.prose : null, rawText: text }
   } catch (err) {
     return { parseError: err.message, rawText: text }
   }
 }
 
-/** Fallback outline: one chrome bullet per declaration covering the whole body. */
-function fallbackOutline(fileContent) {
-  const lineCount = fileContent.split("\n").length
-  return {
-    functions: [
-      {
-        name: "(unpartitioned)",
-        signatureLine: 1,
-        oneLineSummary: "Could not partition this file.",
-        bullets: [
-          {
-            text: "Could not partition this function.",
-            kind: "chrome",
-            fromLine: 2,
-            toLine: lineCount,
-          },
-        ],
-      },
-    ],
+function proseByIndex(prose, unitCount) {
+  const map = {}
+  for (const p of prose || []) {
+    if (!p || typeof p.index !== "number") continue
+    if (p.index < 0 || p.index >= unitCount) continue
+    map[p.index] = {
+      index: p.index,
+      oneLineSummary: typeof p.oneLineSummary === "string" ? p.oneLineSummary : "",
+      bullets: Array.isArray(p.bullets)
+        ? p.bullets
+            .filter((b) => b && typeof b.text === "string")
+            .map((b) => ({
+              text: b.text,
+              kind: b.kind === "chrome" ? "chrome" : "semantic",
+            }))
+        : [],
+    }
   }
+  return map
+}
+
+function fallbackProse(units) {
+  const map = {}
+  for (const u of units) {
+    map[u.index] = {
+      index: u.index,
+      oneLineSummary: `${u.kind} ${u.name}`,
+      bullets: [],
+    }
+  }
+  return map
 }
 
 // --- Menu ---
@@ -256,53 +217,62 @@ ipcMain.handle("list-files", async (_event, rootDir) => {
   return results
 })
 
-ipcMain.handle("describe-book-outline", async (_event, { filename, fileContent }) => {
+ipcMain.handle("describe-book-outline", async (_event, { filename, units }) => {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     return { error: "No ANTHROPIC_API_KEY environment variable set. Launch the app with: ANTHROPIC_API_KEY=sk-... npm start" }
   }
 
-  let content = fileContent
-  let truncated = false
-  if (content.length > MAX_BOOK_CONTENT) {
-    content = content.slice(0, MAX_BOOK_CONTENT)
-    truncated = true
+  if (!Array.isArray(units) || units.length === 0) {
+    return { prose: {}, fallback: false }
   }
-  const lineCount = content.split("\n").length
 
-  const systemPrompt = `You are generating a Natural Language Outline for a source file, in the style of Shi et al. 2024 (arXiv:2408.04820). You partition the file's code into prose bullets suitable for a literate-programming reader.
+  // Cap each unit's source so a giant file can't blow the context.
+  const trimmedUnits = units.map((u) => ({
+    ...u,
+    source: typeof u.source === "string" && u.source.length > MAX_UNIT_SOURCE
+      ? u.source.slice(0, MAX_UNIT_SOURCE) + "\n// … (truncated)"
+      : u.source,
+  }))
+
+  const systemPrompt = `You are writing prose for a literate-programming reader over source code. The file has already been parsed into discrete "units" — functions, classes, interfaces, types, and the like. For each unit, produce a one-line summary and, if the unit has a multi-line body, a short list of prose bullets describing the body in reading order.
 
 Return STRICT JSON matching this TypeScript type — no prose before or after, no markdown fences:
 
-type BookOutline = {
-  functions: FunctionOutline[]
-  imports?: { oneLineSummary: string; fromLine: number; toLine: number }
-}
-type FunctionOutline = {
-  name: string
-  signatureLine: number
+type Response = { prose: UnitProse[] }
+type UnitProse = {
+  index: number
   oneLineSummary: string
-  bullets: Bullet[]
+  bullets: Bullet[]   // empty for single-line units
 }
 type Bullet = {
   text: string
   kind: "semantic" | "chrome"
-  fromLine: number
-  toLine: number
 }
 
 Rules:
-1. Include one FunctionOutline per top-level declaration. This includes: functions, methods, class bodies, interface declarations, type aliases, enums, and significant top-level variable or constant declarations. Do not skip any.
-2. "signatureLine" is the 1-based line of the declaration (where the name appears). Do NOT include it in any bullet's range.
-3. For each multi-line declaration body, produce 4–8 bullets. Very short bodies may have 1–3 bullets. Very long ones may have up to 10.
-4. Bullets must PARTITION the declaration's body with no gaps and no overlaps. The first bullet starts at signatureLine+1, each subsequent bullet starts at the previous bullet's toLine+1, and the last bullet ends at the last line of the declaration body (the closing brace line inclusive, if present).
-5. **For single-line declarations** (e.g. \`export type X = ...\` on one line, \`const Y = 1\`, single-line interfaces), return bullets as an empty array \`[]\`. The "oneLineSummary" alone describes the declaration.
-6. Each bullet "text" is concise prose describing what that section of code does, NOT a restatement of the code. Prefer <= 120 chars.
-7. Label boilerplate (function entry, trivial variable setup, trivial returns) as kind: "chrome". Label meaningful logic as kind: "semantic".
-8. Produce a one-sentence "oneLineSummary" for each declaration describing its purpose.
-9. If the file has import/use/require statements, include an "imports" object with a one-line summary and the range covering all of them.
+1. Return one UnitProse per input unit. Preserve the input index on each entry.
+2. oneLineSummary: one short sentence describing the unit's purpose.
+3. bullets: For a multi-line unit, produce 3–7 bullets reading the body top-to-bottom. Each bullet is concise prose (ideally ≤ 120 chars), describing WHAT that section of code does, not restating the code.
+4. For single-line or declaration-only units (e.g. \`export type X = ...\`, \`const Y = 1\`), bullets must be an empty array \`[]\`.
+5. Bullet kind: "chrome" for boilerplate (function entry, trivial setup, trivial returns); "semantic" for meaningful logic. When in doubt, "semantic".
+6. Do NOT invent line numbers, file paths, or any other metadata. The renderer attaches those from its own AST.
 
 Output: JSON object only. No commentary.`
+
+  const userContent = [
+    `File: ${filename}`,
+    `Unit count: ${trimmedUnits.length}`,
+    "",
+    "Units:",
+    trimmedUnits.map((u) => {
+      return [
+        `<unit index="${u.index}" kind="${u.kind}" name="${u.name || ""}" multiline="${u.isMultiLine ? "true" : "false"}">`,
+        u.source || "",
+        `</unit>`,
+      ].join("\n")
+    }).join("\n\n"),
+  ].join("\n")
 
   async function runOnce() {
     const res = await fetch(ANTHROPIC_API_URL, {
@@ -316,12 +286,7 @@ Output: JSON object only. No commentary.`
         model: "claude-sonnet-4-6",
         max_tokens: 4096,
         system: systemPrompt,
-        messages: [
-          {
-            role: "user",
-            content: `File: ${filename}\nLine count: ${lineCount}\n\n<file>\n${content}\n</file>`,
-          },
-        ],
+        messages: [{ role: "user", content: userContent }],
       }),
     })
     if (!res.ok) {
@@ -331,42 +296,29 @@ Output: JSON object only. No commentary.`
     const data = await res.json()
     const text = data.content?.[0]?.text
     if (!text) return { httpError: "Unexpected API response format" }
-    return parseBookOutlineResponse(text)
+    return parseProseResponse(text)
   }
 
   try {
     let result = await runOnce()
     if (result.httpError) return { error: result.httpError }
 
-    let validation = result.outline
-      ? validateBookOutline(result.outline, lineCount)
-      : { ok: false, errors: [`parse failed: ${result.parseError || "unknown"}`] }
-
-    if (!validation.ok) {
-      console.log(`[book] ${filename} attempt 1 failed validation:`, validation.errors.slice(0, 4))
-      if (result.parseError) {
-        console.log(`[book] ${filename} raw response (first 500 chars):`, result.rawText?.slice(0, 500))
-      }
-      // One retry
+    let prose = result.prose
+    if (!prose) {
+      console.log(`[book] ${filename} attempt 1 parse failed:`, result.parseError)
+      if (result.rawText) console.log(`[book] raw response (first 500):`, result.rawText.slice(0, 500))
       result = await runOnce()
       if (result.httpError) return { error: result.httpError }
-      validation = result.outline
-        ? validateBookOutline(result.outline, lineCount)
-        : { ok: false, errors: [`parse failed: ${result.parseError || "unknown"}`] }
+      prose = result.prose
     }
 
-    if (!validation.ok) {
-      console.log(`[book] ${filename} attempt 2 failed validation:`, validation.errors.slice(0, 4))
-      if (result.parseError) {
-        console.log(`[book] ${filename} raw response (first 500 chars):`, result.rawText?.slice(0, 500))
-      }
-      if (result.outline) {
-        console.log(`[book] ${filename} outline that failed validation:`, JSON.stringify(result.outline).slice(0, 800))
-      }
-      return { outline: fallbackOutline(content), truncated, fallback: true, errors: validation.errors }
+    if (!prose) {
+      console.log(`[book] ${filename} attempt 2 parse failed:`, result.parseError)
+      if (result.rawText) console.log(`[book] raw response (first 500):`, result.rawText.slice(0, 500))
+      return { prose: fallbackProse(units), fallback: true }
     }
 
-    return { outline: result.outline, truncated }
+    return { prose: proseByIndex(prose, units.length), fallback: false }
   } catch (err) {
     return { error: `Network error: ${err.message}` }
   }

@@ -53,27 +53,42 @@ export interface AnnotatedFile {
 
 export type BulletKind = "semantic" | "chrome"
 
-export interface Bullet {
+/** Prose bullet, no line ranges — paired to its unit by position. */
+export interface ProseBullet {
   text: string
   kind: BulletKind
-  fromLine: number
-  toLine: number
 }
 
-export interface FunctionOutline {
+/** AST-derived unit of the file. Line ranges come from Lezer, not the LLM. */
+export type ReaderUnitKind =
+  | "function"
+  | "class"
+  | "interface"
+  | "type"
+  | "enum"
+  | "variable"
+  | "import-block"
+  | "other"
+
+export interface ReaderUnit {
+  index: number
+  kind: ReaderUnitKind
   name: string
-  signatureLine: number
-  oneLineSummary: string
-  bullets: Bullet[]
+  signatureLine: number   // 1-based, line where the declaration starts
+  fromLine: number        // 1-based, inclusive (typically = signatureLine)
+  toLine: number          // 1-based, inclusive
+  isMultiLine: boolean    // fromLine < toLine
+  source: string          // the file slice for this unit (sent to the LLM)
 }
 
-export interface ImportOutline {
+/** LLM-provided prose for one unit, keyed by index. */
+export interface UnitProse {
+  index: number
   oneLineSummary: string
-  fromLine: number
-  toLine: number
+  bullets: ProseBullet[]  // empty if isMultiLine is false, or if the LLM chose no partitioning
 }
 
-export interface BookOutline {
-  functions: FunctionOutline[]
-  imports?: ImportOutline
+export interface BookReaderOutline {
+  units: ReaderUnit[]
+  prose: Record<number, UnitProse>  // keyed by unit index
 }

@@ -9,7 +9,7 @@ import { svelte } from "@replit/codemirror-lang-svelte"
 import { getEditorTheme } from "./theme"
 import { fetchBookOutline } from "./book-outline"
 import { bookDecorationsExtension, bookFoldEffect } from "./book-decorations"
-import type { BookOutline } from "./prose-types"
+import type { BookReaderOutline } from "./prose-types"
 
 const langByExt: Record<string, () => any> = {
   ".js": javascript,
@@ -29,7 +29,7 @@ function getLangExtension(filename: string): Extension {
 
 export interface BookViewHandle {
   view: EditorView
-  outline: BookOutline
+  outline: BookReaderOutline
   expandAll: () => void
   collapseAll: () => void
   destroy: () => void
@@ -48,7 +48,25 @@ export async function openBookView(
     </div>
   `
 
-  const result = await fetchBookOutline(filename, content)
+  // Create a hidden temporary view solely to run Lezer on the content
+  // so extractReaderUnits can walk the syntax tree. We destroy it
+  // immediately after extracting units.
+  const langExt = getLangExtension(filename)
+  const probe = new EditorView({
+    state: EditorState.create({
+      doc: content,
+      extensions: [langExt],
+    }),
+    parent: document.createElement("div"),
+  })
+
+  let result
+  try {
+    result = await fetchBookOutline(probe, filename, content)
+  } finally {
+    probe.destroy()
+  }
+
   if (result.error || !result.outline) {
     parent.innerHTML = `
       <div class="book-error">
@@ -62,7 +80,9 @@ export async function openBookView(
   parent.innerHTML = ""
 
   const outline = result.outline
-  const langExt = getLangExtension(filename)
+
+  // Expose for ad-hoc inspection in devtools.
+  ;(window as any).__bookOutline = outline
 
   const view = new EditorView({
     state: EditorState.create({
@@ -95,7 +115,7 @@ export async function openBookView(
   if (result.fallback) {
     const banner = document.createElement("div")
     banner.className = "book-fallback-banner"
-    banner.textContent = "Outline partitioning failed; showing a single-bullet fallback."
+    banner.textContent = "LLM prose unavailable; showing code with AST summaries only."
     parent.prepend(banner)
   }
 
