@@ -101,6 +101,17 @@ function line(state: EditorState, lineNum: number) {
   return state.doc.line(n)
 }
 
+/**
+ * Position of the end of a line INCLUDING its trailing newline.
+ * Needed as the `to` of block-replace decorations so CodeMirror
+ * treats the range as whole lines and hides the gutter entries.
+ */
+function lineEndIncl(state: EditorState, lineNum: number) {
+  const n = Math.max(1, Math.min(lineNum, state.doc.lines))
+  if (n < state.doc.lines) return state.doc.line(n + 1).from
+  return state.doc.line(n).to
+}
+
 function buildDecorations(
   state: EditorState,
   outline: BookOutline,
@@ -124,7 +135,7 @@ function buildDecorations(
     const { fromLine, toLine } = outline.imports
     if (!fold.importsExpanded) {
       const from = line(state, fromLine).from
-      const to = line(state, toLine).to
+      const to = lineEndIncl(state, toLine)
       decos.push({
         from, to,
         deco: Decoration.replace({
@@ -151,7 +162,6 @@ function buildDecorations(
   for (const fn of outline.functions) {
     const signatureLineInfo = line(state, fn.signatureLine)
     const lastBulletTo = fn.bullets[fn.bullets.length - 1]?.toLine ?? fn.signatureLine
-    const lastLineInfo = line(state, lastBulletTo)
     const expanded = fold.expandedFunctions.has(fn.name)
     const expandedBullets = fold.expandedBullets.get(fn.name) || new Set<number>()
 
@@ -161,7 +171,7 @@ function buildDecorations(
       // L0: one big replace covering signature..lastBullet
       decos.push({
         from: signatureLineInfo.from,
-        to: lastLineInfo.to,
+        to: lineEndIncl(state, lastBulletTo),
         deco: Decoration.replace({
           widget: new CardWidget(fn, 0, expandedBullets, onToggleFunction, onToggleBullet, sigText),
           block: true,
@@ -172,7 +182,7 @@ function buildDecorations(
       // L1/L2: replace signature with CardWidget(level=1).
       decos.push({
         from: signatureLineInfo.from,
-        to: signatureLineInfo.to,
+        to: lineEndIncl(state, fn.signatureLine),
         deco: Decoration.replace({
           widget: new CardWidget(fn, 1, expandedBullets, onToggleFunction, onToggleBullet, sigText),
           block: true,
@@ -183,7 +193,7 @@ function buildDecorations(
       fn.bullets.forEach((b, idx) => {
         if (!expandedBullets.has(idx)) {
           const bFrom = line(state, b.fromLine).from
-          const bTo = line(state, b.toLine).to
+          const bTo = lineEndIncl(state, b.toLine)
           decos.push({
             from: bFrom,
             to: bTo,

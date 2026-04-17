@@ -1,6 +1,7 @@
 import { EditorState, Extension } from "@codemirror/state"
 import { EditorView } from "@codemirror/view"
-import { basicSetup } from "codemirror"
+import { minimalSetup } from "codemirror"
+import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language"
 import { javascript } from "@codemirror/lang-javascript"
 import { python } from "@codemirror/lang-python"
 import { rust } from "@codemirror/lang-rust"
@@ -67,7 +68,8 @@ export async function openBookView(
     state: EditorState.create({
       doc: content,
       extensions: [
-        basicSetup,
+        minimalSetup,
+        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
         EditorState.readOnly.of(true),
         EditorView.editable.of(false),
         langExt,
