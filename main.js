@@ -1,34 +1,8 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, nativeTheme } = require("electron")
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require("electron")
 const path = require("path")
 const fs = require("fs")
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
-
-// --- Settings persistence ---
-
-const settingsPath = path.join(app.getPath("userData"), "settings.json")
-
-function readSettings() {
-  try {
-    return JSON.parse(fs.readFileSync(settingsPath, "utf-8"))
-  } catch {
-    return {}
-  }
-}
-
-function writeSettings(settings) {
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2))
-}
-
-function getThemeSetting() {
-  return readSettings().theme || "system"
-}
-
-function setThemeSetting(value) {
-  const settings = readSettings()
-  settings.theme = value
-  writeSettings(settings)
-}
 
 // --- .env loading ---
 
@@ -50,8 +24,6 @@ if (fs.existsSync(envPath)) {
 let win = null
 
 function buildAppMenu() {
-  const themeSetting = getThemeSetting()
-
   const template = [
     {
       label: "File",
@@ -76,36 +48,11 @@ function buildAppMenu() {
     {
       label: "View",
       submenu: [
-        {
-          label: "Appearance",
-          submenu: [
-            {
-              label: "Light",
-              type: "radio",
-              checked: themeSetting === "light",
-              click: () => applyTheme("light"),
-            },
-            {
-              label: "Dark",
-              type: "radio",
-              checked: themeSetting === "dark",
-              click: () => applyTheme("dark"),
-            },
-            {
-              label: "System",
-              type: "radio",
-              checked: themeSetting === "system",
-              click: () => applyTheme("system"),
-            },
-          ],
-        },
-        { type: "separator" },
         { role: "toggleDevTools" },
       ],
     },
   ]
 
-  // macOS app menu
   if (process.platform === "darwin") {
     template.unshift({
       label: app.name,
@@ -124,37 +71,33 @@ function buildAppMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
-function applyTheme(setting) {
-  setThemeSetting(setting)
-
-  // Map to Electron's nativeTheme
-  if (setting === "system") {
-    nativeTheme.themeSource = "system"
-  } else {
-    nativeTheme.themeSource = setting
-  }
-
-  // Notify renderer
-  if (win && !win.isDestroyed()) {
-    win.webContents.send("set-theme", setting)
-  }
-
-  // Rebuild menu to update radio state
-  buildAppMenu()
-}
-
 // --- Window ---
 
 function createWindow() {
+  const isMac = process.platform === "darwin"
+  const isWin = process.platform === "win32"
+
   win = new BrowserWindow({
     width: 1200,
     height: 800,
     title: "Hopper",
+    backgroundColor: "#171717",
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
     },
+    ...(isMac && {
+      titleBarStyle: "hiddenInset",
+    }),
+    ...(isWin && {
+      titleBarStyle: "hidden",
+      titleBarOverlay: {
+        color: "#00000000",
+        symbolColor: "#8a8f98",
+        height: 36,
+      },
+    }),
   })
 
   win.loadFile(path.join(__dirname, "app", "index.html"))
@@ -165,10 +108,6 @@ function createWindow() {
 }
 
 // --- IPC handlers ---
-
-ipcMain.handle("get-theme", () => {
-  return getThemeSetting()
-})
 
 ipcMain.handle("read-dir", async (_event, dirPath) => {
   const entries = fs.readdirSync(dirPath, { withFileTypes: true })
@@ -292,14 +231,6 @@ Do not wrap your response in any special formatting. Just write the prose direct
 // --- App lifecycle ---
 
 app.whenReady().then(() => {
-  // Apply persisted theme on startup
-  const themeSetting = getThemeSetting()
-  if (themeSetting === "system") {
-    nativeTheme.themeSource = "system"
-  } else {
-    nativeTheme.themeSource = themeSetting
-  }
-
   buildAppMenu()
   createWindow()
 })

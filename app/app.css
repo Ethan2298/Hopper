@@ -1,0 +1,471 @@
+/* Hopper — Magi-aligned styling. Dark-only. */
+
+:root {
+  /* Surface colors — from Magi app.css */
+  --color-background:        #171717;
+  --color-foreground:        #f7f8f8;
+  --color-muted:             #17181b;
+  --color-muted-foreground:  #8a8f98;
+  --color-border:            #1e1e1e;
+  --color-card:              #17181b;
+  --color-card-hover:        #1e1f22;
+  --color-input-surface:     #161718;
+  --color-accent-surface:    rgba(255, 255, 255, 0.06);
+
+  /* Accent — Hopper-blue carve-out (not Magi's #5e6ad2) */
+  --accent:             #0169cc;
+  --accent-foreground:  #ffffff;
+  --link:               var(--accent);
+
+  /* Semantic aliases — kept so existing TS/CSS references resolve */
+  --bg:             var(--color-background);
+  --text:           var(--color-foreground);
+  --muted:          var(--color-muted-foreground);
+  --header-bg:      var(--color-background);
+  --header-border:  var(--color-border);
+  --sidebar-bg:     var(--color-background);
+  --sidebar-border: var(--color-border);
+  --btn-border:     var(--color-border);
+  --tree-hover:     var(--color-accent-surface);
+  --tree-active-bg: rgba(255, 255, 255, 0.08);
+  --tooltip-bg:     var(--color-muted);
+  --tooltip-border: rgba(255, 255, 255, 0.08);
+  --error:          #e06c75;
+  --folder-icon:    var(--muted);
+
+  /* Radius & shape */
+  --radius:      0.5rem;
+  --radius-sm:   3px;
+  --radius-menu: 12px;
+
+  /* Shadow */
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  /* Fonts */
+  --font-ui:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-code: "SF Mono", "JetBrains Mono", Menlo, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+::selection {
+  background: rgba(1, 105, 204, 0.25);
+  color: var(--text);
+}
+
+/* --- Scrollbars (for areas that don't use the mask-fade pattern) --- */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-corner,
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+::-webkit-scrollbar-thumb:active {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+/* --- Top bar --- */
+
+header {
+  height: 36px;
+  padding: 0 12px;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  font-size: 12px;
+  color: var(--muted);
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* macOS — leave room for traffic lights */
+html[data-platform="darwin"] header {
+  padding-left: 78px;
+}
+
+/* Windows — leave room for titleBarOverlay controls */
+html[data-platform="win32"] header {
+  padding-right: 140px;
+}
+
+#current-file {
+  font-family: var(--font-code);
+  color: var(--muted);
+  flex: 1;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* --- Sidebar --- */
+
+.sidebar {
+  width: 220px;
+  min-width: 180px;
+  max-width: 360px;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#folder-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+#open-folder {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 11px;
+  font-family: var(--font-ui);
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: background-color 75ms ease-out, color 75ms ease-out;
+}
+#open-folder:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+/* Sidebar scroll region — mask-faded à la Magi */
+#file-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+  font-size: 13px;
+
+  --sidebar-fade-height: 28px;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    rgba(0, 0, 0, 0.45) 12px,
+    #000 var(--sidebar-fade-height),
+    #000 calc(100% - var(--sidebar-fade-height)),
+    rgba(0, 0, 0, 0.45) calc(100% - 12px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    rgba(0, 0, 0, 0.45) 12px,
+    #000 var(--sidebar-fade-height),
+    #000 calc(100% - var(--sidebar-fade-height)),
+    rgba(0, 0, 0, 0.45) calc(100% - 12px),
+    transparent 100%
+  );
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  scrollbar-width: none;
+}
+#file-tree::-webkit-scrollbar { width: 0; height: 0; }
+
+/* --- Tree items --- */
+
+.tree-item {
+  padding: 4px 10px;
+  margin: 0 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  user-select: none;
+  color: var(--muted);
+  transition: background-color 75ms ease-out, color 75ms ease-out;
+}
+.tree-item:hover {
+  background: var(--tree-hover);
+  color: var(--text);
+}
+.tree-file.active {
+  background: var(--tree-active-bg);
+  color: var(--text);
+}
+
+.tree-icon {
+  width: 16px;
+  font-size: 10px;
+  color: var(--muted);
+  flex-shrink: 0;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tree-name {
+  margin-left: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tree-children { padding-left: 12px; }
+
+/* --- Mode toggle (Reader / Editor) --- */
+
+.mode-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--color-muted);
+  border-radius: 10px;
+  padding: 2px;
+  -webkit-app-region: no-drag;
+}
+.mode-toggle button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-ui);
+  padding: 4px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 75ms ease-out, color 75ms ease-out;
+}
+.mode-toggle button:hover { color: var(--text); }
+.mode-toggle button.active {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+/* --- Editor --- */
+
+#editor {
+  flex: 1;
+  overflow: auto;
+  background: var(--bg);
+}
+#editor .cm-editor { height: 100%; }
+#editor.hidden { display: none; }
+
+/* --- Book panel container (mounted into #concept-tree) --- */
+
+#concept-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 40px 28px 80px;
+  background: var(--bg);
+
+  /* Magi main-chat-scroll mask fade */
+  --chat-fade-height: 28px;
+  --chat-fade-opacity: 0;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, calc(1 - var(--chat-fade-opacity))) 0,
+    rgba(0, 0, 0, calc(1 - 0.55 * var(--chat-fade-opacity))) 12px,
+    #000 var(--chat-fade-height),
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, calc(1 - var(--chat-fade-opacity))) 0,
+    rgba(0, 0, 0, calc(1 - 0.55 * var(--chat-fade-opacity))) 12px,
+    #000 var(--chat-fade-height),
+    #000 100%
+  );
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  scrollbar-width: none;
+}
+#concept-tree::-webkit-scrollbar { width: 0; height: 0; }
+#concept-tree.hidden { display: none; }
+
+/* --- Empty state --- */
+
+.cp-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* --- Book prose --- */
+
+.book-prose {
+  /* no max-width — full pane */
+}
+
+.book-paragraph {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  margin: 0 0 12px 0;
+}
+
+.book-file-link {
+  color: var(--link);
+  text-decoration: none;
+  cursor: pointer;
+}
+.book-file-link:hover { text-decoration: underline; }
+.book-file-link:active { opacity: 0.85; }
+
+.book-code-highlight,
+.book-symbol-ref {
+  color: var(--accent);
+  cursor: default;
+}
+.book-code-highlight:hover,
+.book-symbol-ref:hover {
+  opacity: 0.8;
+}
+
+.book-truncated-note {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* --- Book code tooltip --- */
+
+.book-code-tooltip {
+  position: fixed;
+  display: none;
+  background: var(--tooltip-bg);
+  border: 1px solid var(--tooltip-border);
+  border-radius: var(--radius-menu);
+  box-shadow: var(--shadow-float);
+  padding: 10px 14px;
+  max-width: 520px;
+  max-height: 240px;
+  overflow: auto;
+  z-index: 9999;
+  pointer-events: none;
+}
+.book-code-tooltip pre {
+  font-family: var(--font-code);
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+/* --- Thinking spinner (replaces old .book-loading) --- */
+
+.book-thinking {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+.thinking-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-top-color: var(--muted);
+  border-right-color: var(--muted);
+  animation: thinking-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+.thinking-text {
+  font-size: 13px;
+  color: var(--muted);
+  animation: thinking-pulse 2s ease-in-out infinite;
+}
+@keyframes thinking-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes thinking-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+
+/* --- Book error --- */
+
+.book-error {
+  padding: 20px 0;
+}
+.book-error-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--error);
+  margin-bottom: 8px;
+}
+.book-error-message {
+  font-size: 12px;
+  font-family: var(--font-code);
+  color: var(--muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* --- Paragraph entrance animation --- */
+
+@keyframes msg-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-msg-enter {
+  animation: msg-enter 150ms ease-out both;
+}

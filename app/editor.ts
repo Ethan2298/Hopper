@@ -6,7 +6,7 @@ import { svelte } from "@replit/codemirror-lang-svelte"
 import { EditorState } from "@codemirror/state"
 import { conceptClassifier } from "./concepts"
 import { BookPanel } from "./book-panel"
-import { initTheme, themeCompartment, getEditorTheme, getResolvedTheme, setEditorView, fileIcon } from "./theme"
+import { getEditorTheme, fileIcon } from "./theme"
 
 declare global {
   interface Window {
@@ -17,10 +17,7 @@ declare global {
       showOpenDialog: () => Promise<string | null>
       listFiles: (rootDir: string) => Promise<string[]>
     }
-    theme: {
-      onChange: (cb: (setting: string) => void) => void
-      getCurrent: () => Promise<string>
-    }
+    platform: string
   }
 }
 
@@ -71,28 +68,24 @@ function openFile(filePath: string, filename: string) {
   window.fs.readFile(filePath).then((content) => {
     const parent = document.getElementById("editor")!
     currentLangExt = getLangExtension(filename)
-    const resolved = getResolvedTheme()
 
     if (editorView) {
       editorView.setState(
         EditorState.create({
           doc: content,
-          extensions: [basicSetup, currentLangExt, themeCompartment.of(getEditorTheme(resolved)), conceptClassifier()],
+          extensions: [basicSetup, currentLangExt, getEditorTheme(), conceptClassifier()],
         })
       )
-      setEditorView(editorView)
     } else {
       editorView = new EditorView({
         doc: content,
-        extensions: [basicSetup, currentLangExt, themeCompartment.of(getEditorTheme(resolved)), conceptClassifier()],
+        extensions: [basicSetup, currentLangExt, getEditorTheme(), conceptClassifier()],
         parent,
       })
-      setEditorView(editorView)
     }
 
     document.getElementById("current-file")!.textContent = filePath
 
-    // Update book panel with file content and editor view (for AST extraction)
     if (bookPanel) {
       bookPanel.update(content, filename, editorView!)
     }
@@ -147,7 +140,9 @@ async function renderTree(container: HTMLElement, dirPath: string) {
 // --- Init ---
 
 async function init() {
-  initTheme()
+  if (window.platform) {
+    document.documentElement.setAttribute("data-platform", window.platform)
+  }
 
   const openBtn = document.getElementById("open-folder")!
   const treeContainer = document.getElementById("file-tree")!
@@ -160,7 +155,6 @@ async function init() {
     openFile(absPath, filename)
   })
 
-  // Mode toggle
   document.getElementById("mode-reader")!.addEventListener("click", () => setMode("reader"))
   document.getElementById("mode-editor")!.addEventListener("click", () => setMode("editor"))
 
@@ -175,7 +169,6 @@ async function init() {
     }
   })
 
-  // Default: open home directory
   const home = await window.fs.getHomePath()
   document.getElementById("folder-name")!.textContent = "~"
   await renderTree(treeContainer, home)

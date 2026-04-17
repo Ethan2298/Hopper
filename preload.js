@@ -12,7 +12,4 @@ contextBridge.exposeInMainWorld("ai", {
   describe: (opts) => ipcRenderer.invoke("describe-file", opts),
 })
 
-contextBridge.exposeInMainWorld("theme", {
-  onChange: (cb) => ipcRenderer.on("set-theme", (_e, val) => cb(val)),
-  getCurrent: () => ipcRenderer.invoke("get-theme"),
-})
+contextBridge.exposeInMainWorld("platform", process.platform)

@@ -17,12 +17,24 @@ export class BookPanel {
   private onFileClick: ((relPath: string) => void) | null = null
   private requestId = 0
   private tooltip: HTMLDivElement | null = null
-  // Map of symbol name → source code snippet, built from AST
   private symbolCodeMap = new Map<string, string>()
+  private scrollListener: (() => void) | null = null
 
   constructor(container: HTMLElement) {
     this.container = container
+    this.attachScrollFade()
     this.renderEmpty()
+  }
+
+  /** Drive --chat-fade-opacity on the scroll container (Magi pattern). */
+  private attachScrollFade() {
+    const update = () => {
+      const scrolled = Math.min(this.container.scrollTop / 16, 1)
+      this.container.style.setProperty("--chat-fade-opacity", String(scrolled))
+    }
+    this.scrollListener = update
+    this.container.addEventListener("scroll", update, { passive: true })
+    update()
   }
 
   setProjectFiles(files: string[]) {
@@ -40,7 +52,6 @@ export class BookPanel {
     let outline = ""
     this.symbolCodeMap.clear()
 
-    // Extract AST for outline context + symbol-to-code mapping
     if (view) {
       await new Promise((r) => setTimeout(r, 200))
 
@@ -51,7 +62,6 @@ export class BookPanel {
         const result = buildOutline(structure, content)
         outline = result.outline
 
-        // Build symbol → code map from all AST nodes
         for (const [, entry] of result.nodeMap) {
           this.indexNode(entry.fileNode, content)
         }
@@ -70,7 +80,6 @@ export class BookPanel {
     this.renderProse(filename, result.text!, result.truncated)
   }
 
-  /** Recursively index a FileNode and its children by name */
   private indexNode(node: FileNode, source: string) {
     if (node.name && node.kind !== "import") {
       this.symbolCodeMap.set(node.name, source.slice(node.from, node.to))
@@ -84,11 +93,11 @@ export class BookPanel {
     this.container.innerHTML = `<div class="cp-empty">Open a file from the tree</div>`
   }
 
-  private renderLoading(filename: string) {
+  private renderLoading(_filename: string) {
     this.container.innerHTML = `
-      <div class="book-loading">
-        <span class="book-loading-dot"></span>
-        <span>Reading ${escapeHtml(filename)}...</span>
+      <div class="book-thinking">
+        <span class="thinking-spinner"></span>
+        <span class="thinking-text">Thinking…</span>
       </div>
     `
   }
@@ -102,14 +111,9 @@ export class BookPanel {
     `
   }
 
-  private renderProse(filename: string, text: string, truncated?: boolean) {
+  private renderProse(_filename: string, text: string, truncated?: boolean) {
     const el = document.createElement("div")
     el.className = "book-prose"
-
-    const title = document.createElement("h2")
-    title.className = "book-title"
-    title.textContent = filename
-    el.appendChild(title)
 
     if (truncated) {
       const note = document.createElement("p")
@@ -122,7 +126,7 @@ export class BookPanel {
     for (const para of paragraphs) {
       if (!para.trim()) continue
       const p = document.createElement("p")
-      p.className = "book-paragraph"
+      p.className = "book-paragraph animate-msg-enter"
       this.renderAnnotatedText(p, para.trim())
       el.appendChild(p)
     }
@@ -239,8 +243,6 @@ export class BookPanel {
       return
     }
 
-    // Build a regex that matches any known symbol name as a whole word
-    // Sort by length descending so longer names match first
     const names = [...this.symbolCodeMap.keys()]
       .filter((n) => n.length >= 3)
       .sort((a, b) => b.length - a.length)
