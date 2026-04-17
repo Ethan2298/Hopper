@@ -1,4 +1,4 @@
-import { EditorView, Decoration, DecorationSet, WidgetType, ViewPlugin, ViewUpdate } from "@codemirror/view"
+import { EditorView, Decoration, DecorationSet, WidgetType, ViewPlugin } from "@codemirror/view"
 import { StateField, StateEffect, EditorState, Extension } from "@codemirror/state"
 import type { BookOutline } from "./prose-types"
 import { CardWidget, ImportWidget } from "./book-widgets"
@@ -112,23 +112,23 @@ function lineEndIncl(state: EditorState, lineNum: number) {
   return state.doc.line(n).to
 }
 
+interface BookCallbacks {
+  onToggleFunction: (fnName: string) => void
+  onToggleBullet: (fnName: string, bulletIdx: number) => void
+  onToggleImports: () => void
+}
+
 function buildDecorations(
   state: EditorState,
   outline: BookOutline,
-  view: EditorView
+  cb: BookCallbacks
 ): DecorationSet {
   const fold = state.field(bookFoldState)
   const decos: { from: number; to: number; deco: Decoration }[] = []
 
-  const onToggleFunction = (fnName: string) => {
-    view.dispatch({ effects: bookFoldEffect.of({ kind: "toggleFunction", fnName }) })
-  }
-  const onToggleBullet = (fnName: string, bulletIdx: number) => {
-    view.dispatch({ effects: bookFoldEffect.of({ kind: "toggleBullet", fnName, bulletIdx }) })
-  }
-  const onToggleImports = () => {
-    view.dispatch({ effects: bookFoldEffect.of({ kind: "toggleImports" }) })
-  }
+  const onToggleFunction = cb.onToggleFunction
+  const onToggleBullet = cb.onToggleBullet
+  const onToggleImports = cb.onToggleImports
 
   // Imports
   if (outline.imports) {
@@ -213,25 +213,63 @@ function buildDecorations(
   return Decoration.set(decos.map((d) => d.deco.range(d.from, d.to)))
 }
 
-// --- Plugin factory ---
+// --- Extension factory ---
+//
+// CodeMirror 6 requires BLOCK decorations to come from a StateField, not a
+// ViewPlugin. We build the DecorationSet in a StateField, but we still need
+// a reference to the EditorView so click handlers can dispatch StateEffects.
+// A tiny ViewPlugin captures the view into a closure that the StateField's
+// callbacks read when building widgets.
 
 export function bookDecorationsExtension(outline: BookOutline): Extension {
-  const plugin = ViewPlugin.fromClass(
-    class {
-      decorations: DecorationSet
-      constructor(view: EditorView) {
-        this.decorations = buildDecorations(view.state, outline, view)
-      }
-      update(u: ViewUpdate) {
-        const foldChanged = u.transactions.some((tr) =>
-          tr.effects.some((e) => e.is(bookFoldEffect))
-        )
-        if (foldChanged || u.docChanged || u.viewportChanged) {
-          this.decorations = buildDecorations(u.view.state, outline, u.view)
-        }
+  let viewRef: EditorView | null = null
+
+  const cb: BookCallbacks = {
+    onToggleFunction: (fnName) => {
+      viewRef?.dispatch({ effects: bookFoldEffect.of({ kind: "toggleFunction", fnName }) })
+    },
+    onToggleBullet: (fnName, bulletIdx) => {
+      viewRef?.dispatch({ effects: bookFoldEffect.of({ kind: "toggleBullet", fnName, bulletIdx }) })
+    },
+    onToggleImports: () => {
+      viewRef?.dispatch({ effects: bookFoldEffect.of({ kind: "toggleImports" }) })
+    },
+  }
+
+  const decorationField = StateField.define<DecorationSet>({
+    create(state) {
+      try {
+        return buildDecorations(state, outline, cb)
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("[book] buildDecorations threw on init:", err, { outline })
+        return Decoration.none
       }
     },
-    { decorations: (v) => v.decorations }
+    update(value, tr) {
+      const foldChanged = tr.effects.some((e) => e.is(bookFoldEffect))
+      if (!foldChanged && !tr.docChanged) return value
+      try {
+        return buildDecorations(tr.state, outline, cb)
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("[book] buildDecorations threw on update:", err)
+        return value
+      }
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  })
+
+  const viewCapture = ViewPlugin.fromClass(
+    class {
+      constructor(view: EditorView) {
+        viewRef = view
+      }
+      destroy() {
+        if (viewRef) viewRef = null
+      }
+    }
   )
-  return [bookFoldState, plugin]
+
+  return [bookFoldState, decorationField, viewCapture]
 }
