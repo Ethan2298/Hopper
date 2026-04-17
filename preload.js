@@ -9,7 +9,6 @@ contextBridge.exposeInMainWorld("fs", {
 })
 
 contextBridge.exposeInMainWorld("ai", {
-  describe: (opts) => ipcRenderer.invoke("describe-file", opts),
   describeBookOutline: (opts) => ipcRenderer.invoke("describe-book-outline", opts),
 })
 

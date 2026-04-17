@@ -4,12 +4,6 @@ import { validateBookOutline } from "./book-outline-validate"
 declare global {
   interface Window {
     ai: {
-      describe: (opts: {
-        filename: string
-        fileContent: string
-        projectFiles: string[]
-        outline?: string
-      }) => Promise<{ text?: string; error?: string }>
       describeBookOutline: (opts: {
         filename: string
         fileContent: string
