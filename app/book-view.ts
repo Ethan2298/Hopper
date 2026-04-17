@@ -48,24 +48,14 @@ export async function openBookView(
     </div>
   `
 
-  // Create a hidden temporary view solely to run Lezer on the content
-  // so extractReaderUnits can walk the syntax tree. We destroy it
-  // immediately after extracting units.
+  // Parse with a detached EditorState — no view needed just to walk Lezer.
   const langExt = getLangExtension(filename)
-  const probe = new EditorView({
-    state: EditorState.create({
-      doc: content,
-      extensions: [langExt],
-    }),
-    parent: document.createElement("div"),
+  const probeState = EditorState.create({
+    doc: content,
+    extensions: [langExt],
   })
 
-  let result
-  try {
-    result = await fetchBookOutline(probe, filename, content)
-  } finally {
-    probe.destroy()
-  }
+  const result = await fetchBookOutline(probeState, filename, content)
 
   if (result.error || !result.outline) {
     parent.innerHTML = `
@@ -116,13 +106,6 @@ export async function openBookView(
     const banner = document.createElement("div")
     banner.className = "book-fallback-banner"
     banner.textContent = "LLM prose unavailable; showing code with AST summaries only."
-    parent.prepend(banner)
-  }
-
-  if (result.truncated) {
-    const banner = document.createElement("div")
-    banner.className = "book-truncated-note"
-    banner.textContent = "This file was large; only the first portion was analyzed."
     parent.prepend(banner)
   }
 

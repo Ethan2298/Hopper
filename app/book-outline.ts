@@ -1,4 +1,4 @@
-import type { EditorView } from "@codemirror/view"
+import type { EditorState } from "@codemirror/state"
 import type { ReaderUnit, UnitProse, BookReaderOutline } from "./prose-types"
 import { extractReaderUnits } from "./book-units"
 
@@ -18,7 +18,6 @@ declare global {
 }
 
 const CACHE_VERSION = "v2-book"
-const MAX_CONTENT_SIZE = 30_000
 
 const cache = new Map<string, BookReaderOutline>()
 
@@ -33,17 +32,16 @@ async function hashKey(filename: string, content: string): Promise<string> {
 export interface FetchResult {
   outline?: BookReaderOutline
   error?: string
-  truncated?: boolean
   fallback?: boolean
 }
 
 /**
- * Extract AST units from the view, ask the LLM for prose per unit,
+ * Extract AST units from the state, ask the LLM for prose per unit,
  * zip them into a BookReaderOutline. Line numbers are ours;
  * the LLM only supplies prose.
  */
 export async function fetchBookOutline(
-  view: EditorView,
+  state: EditorState,
   filename: string,
   content: string
 ): Promise<FetchResult> {
@@ -51,21 +49,18 @@ export async function fetchBookOutline(
   const cached = cache.get(key)
   if (cached) return { outline: cached }
 
-  const truncated = content.length > MAX_CONTENT_SIZE
-
-  const units = extractReaderUnits(view, filename)
+  const units = extractReaderUnits(state, filename)
   if (units.length === 0) {
-    // No recognizable top-level structure — nothing to render.
     const outline: BookReaderOutline = { units: [], prose: {} }
     cache.set(key, outline)
-    return { outline, truncated }
+    return { outline }
   }
 
   const res = await window.ai.describeBookOutline({ filename, units })
-  if (res.error) return { error: res.error, truncated }
+  if (res.error) return { error: res.error }
 
   const prose = res.prose || {}
   const outline: BookReaderOutline = { units, prose }
   cache.set(key, outline)
-  return { outline, truncated, fallback: res.fallback }
+  return { outline, fallback: res.fallback }
 }

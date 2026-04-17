@@ -39,15 +39,8 @@ function getLangExtension(filename: string) {
 
 let editorView: EditorView | null = null
 let bookHandle: BookViewHandle | null = null
-let currentMode: "book" | "editor" = "book"
-let currentLangExt: any = []
-let currentContent: string = ""
-let currentFilename: string = ""
-let projectRoot: string = ""
-let projectFiles: string[] = []
 
 function setMode(mode: "book" | "editor") {
-  currentMode = mode
   const editorEl = document.getElementById("editor")!
   const bookEl = document.getElementById("book-view")!
   const bookBtn = document.getElementById("mode-book")!
@@ -74,9 +67,7 @@ function setMode(mode: "book" | "editor") {
 
 async function openFile(filePath: string, filename: string) {
   const content = await window.fs.readFile(filePath)
-  currentContent = content
-  currentFilename = filename
-  currentLangExt = getLangExtension(filename)
+  const langExt = getLangExtension(filename)
 
   // Editor mode — CodeMirror with concept highlights
   const editorParent = document.getElementById("editor")!
@@ -84,13 +75,13 @@ async function openFile(filePath: string, filename: string) {
     editorView.setState(
       EditorState.create({
         doc: content,
-        extensions: [basicSetup, currentLangExt, getEditorTheme(), conceptClassifier()],
+        extensions: [basicSetup, langExt, getEditorTheme(), conceptClassifier()],
       })
     )
   } else {
     editorView = new EditorView({
       doc: content,
-      extensions: [basicSetup, currentLangExt, getEditorTheme(), conceptClassifier()],
+      extensions: [basicSetup, langExt, getEditorTheme(), conceptClassifier()],
       parent: editorParent,
     })
   }
@@ -172,9 +163,7 @@ async function init() {
   openBtn.addEventListener("click", async () => {
     const dir = await window.fs.showOpenDialog()
     if (dir) {
-      projectRoot = dir
       document.getElementById("folder-name")!.textContent = dir.split("/").pop() || dir
-      projectFiles = await window.fs.listFiles(dir)
       await renderTree(treeContainer, dir)
     }
   })

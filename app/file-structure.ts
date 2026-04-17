@@ -1,4 +1,4 @@
-import { EditorView } from "@codemirror/view"
+import { EditorState } from "@codemirror/state"
 import { syntaxTree } from "@codemirror/language"
 import { SyntaxNode } from "@lezer/common"
 import type { FileNode, FileNodeKind, FileStructure, ChildSummary } from "./prose-types"
@@ -314,9 +314,9 @@ function walkJsNodes(node: SyntaxNode | null, doc: { sliceString(from: number, t
  * Picks up: template blocks, component usages, and nested JS declarations.
  * Uses tree.iterate() with enter/leave to avoid manual recursion.
  */
-function extractSvelteNodes(view: EditorView, structure: FileStructure) {
-  const tree = syntaxTree(view.state)
-  const doc = view.state.doc
+function extractSvelteNodes(state: EditorState, structure: FileStructure) {
+  const tree = syntaxTree(state)
+  const doc = state.doc
   const seen = new Set<number>() // track by `from` to avoid dupes
 
   tree.iterate({
@@ -395,9 +395,9 @@ function extractSvelteNodes(view: EditorView, structure: FileStructure) {
   })
 }
 
-export function extractFileStructure(view: EditorView, filename: string = ""): FileStructure {
-  const tree = syntaxTree(view.state)
-  const doc = view.state.doc
+export function extractFileStructure(state: EditorState, filename: string = ""): FileStructure {
+  const tree = syntaxTree(state)
+  const doc = state.doc
   const lang = detectLanguage(filename)
 
   const structure: FileStructure = {
@@ -408,7 +408,7 @@ export function extractFileStructure(view: EditorView, filename: string = ""): F
   }
 
   if (lang === "svelte") {
-    extractSvelteNodes(view, structure)
+    extractSvelteNodes(state, structure)
   } else {
     // Standard JS/TS/Python/Rust: walk top-level nodes directly
     walkJsNodes(tree.topNode.firstChild, doc, lang, structure)

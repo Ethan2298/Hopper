@@ -1,4 +1,4 @@
-import type { EditorView } from "@codemirror/view"
+import type { EditorState } from "@codemirror/state"
 import type { FileNode } from "./prose-types"
 import { extractFileStructure } from "./file-structure"
 import type { ReaderUnit, ReaderUnitKind } from "./prose-types"
@@ -16,9 +16,9 @@ function nodeKindToUnitKind(kind: FileNode["kind"]): ReaderUnitKind {
   }
 }
 
-function offsetToLine(view: EditorView, offset: number): number {
-  const n = Math.max(0, Math.min(offset, view.state.doc.length))
-  return view.state.doc.lineAt(n).number
+function offsetToLine(state: EditorState, offset: number): number {
+  const n = Math.max(0, Math.min(offset, state.doc.length))
+  return state.doc.lineAt(n).number
 }
 
 /**
@@ -26,17 +26,17 @@ function offsetToLine(view: EditorView, offset: number): number {
  * Imports are coalesced into a single "import-block" unit.
  * Top-level declarations each become one unit, in source order.
  */
-export function extractReaderUnits(view: EditorView, filename: string): ReaderUnit[] {
-  const structure = extractFileStructure(view, filename)
-  const doc = view.state.doc
+export function extractReaderUnits(state: EditorState, filename: string): ReaderUnit[] {
+  const structure = extractFileStructure(state, filename)
+  const doc = state.doc
   const units: ReaderUnit[] = []
 
   // Coalesced imports unit
   if (structure.imports.length > 0) {
     const from = Math.min(...structure.imports.map((n) => n.from))
     const to = Math.max(...structure.imports.map((n) => n.to))
-    const fromLine = offsetToLine(view, from)
-    const toLine = offsetToLine(view, to)
+    const fromLine = offsetToLine(state, from)
+    const toLine = offsetToLine(state, to)
     units.push({
       index: units.length,
       kind: "import-block",
@@ -52,8 +52,8 @@ export function extractReaderUnits(view: EditorView, filename: string): ReaderUn
   // One unit per top-level declaration, in source order
   const decls = [...structure.declarations].sort((a, b) => a.from - b.from)
   for (const decl of decls) {
-    const fromLine = offsetToLine(view, decl.from)
-    const toLine = offsetToLine(view, decl.to)
+    const fromLine = offsetToLine(state, decl.from)
+    const toLine = offsetToLine(state, decl.to)
     units.push({
       index: units.length,
       kind: nodeKindToUnitKind(decl.kind),
