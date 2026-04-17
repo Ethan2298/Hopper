@@ -1,0 +1,3 @@
+{"type":"server-started","port":64815,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:64815","screen_dir":"/Users/ethan/Projects/Hopper/.superpowers/brainstorm/37297-1776400656/content","state_dir":"/Users/ethan/Projects/Hopper/.superpowers/brainstorm/37297-1776400656/state"}
+{"type":"screen-added","file":"/Users/ethan/Projects/Hopper/.superpowers/brainstorm/37297-1776400656/content/interleaved-mockup.html"}
+{"type":"server-stopped","reason":"owner process exited"}
