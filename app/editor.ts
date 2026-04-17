@@ -5,7 +5,7 @@ import { rust } from "@codemirror/lang-rust"
 import { svelte } from "@replit/codemirror-lang-svelte"
 import { EditorState } from "@codemirror/state"
 import { conceptClassifier } from "./concepts"
-import { BookPanel } from "./book-panel"
+import { openBookView, type BookViewHandle } from "./book-view"
 import { getEditorTheme, fileIcon } from "./theme"
 
 declare global {
@@ -38,58 +38,77 @@ function getLangExtension(filename: string) {
 }
 
 let editorView: EditorView | null = null
-let bookPanel: BookPanel | null = null
-let currentMode: "reader" | "editor" = "reader"
+let bookHandle: BookViewHandle | null = null
+let currentMode: "book" | "editor" = "book"
 let currentLangExt: any = []
+let currentContent: string = ""
+let currentFilename: string = ""
 let projectRoot: string = ""
 let projectFiles: string[] = []
 
-function setMode(mode: "reader" | "editor") {
+function setMode(mode: "book" | "editor") {
   currentMode = mode
   const editorEl = document.getElementById("editor")!
-  const conceptEl = document.getElementById("concept-tree")!
-  const learnBtn = document.getElementById("mode-reader")!
+  const bookEl = document.getElementById("book-view")!
+  const bookBtn = document.getElementById("mode-book")!
   const editorBtn = document.getElementById("mode-editor")!
+  const expandBtn = document.getElementById("mode-expand-all")!
+  const collapseBtn = document.getElementById("mode-collapse-all")!
 
-  if (mode === "reader") {
+  if (mode === "book") {
     editorEl.classList.add("hidden")
-    conceptEl.classList.remove("hidden")
-    learnBtn.classList.add("active")
+    bookEl.classList.remove("hidden")
+    bookBtn.classList.add("active")
     editorBtn.classList.remove("active")
+    expandBtn.classList.remove("hidden")
+    collapseBtn.classList.remove("hidden")
   } else {
     editorEl.classList.remove("hidden")
-    conceptEl.classList.add("hidden")
-    learnBtn.classList.remove("active")
+    bookEl.classList.add("hidden")
+    bookBtn.classList.remove("active")
     editorBtn.classList.add("active")
+    expandBtn.classList.add("hidden")
+    collapseBtn.classList.add("hidden")
   }
 }
 
-function openFile(filePath: string, filename: string) {
-  window.fs.readFile(filePath).then((content) => {
-    const parent = document.getElementById("editor")!
-    currentLangExt = getLangExtension(filename)
+async function openFile(filePath: string, filename: string) {
+  const content = await window.fs.readFile(filePath)
+  currentContent = content
+  currentFilename = filename
+  currentLangExt = getLangExtension(filename)
 
-    if (editorView) {
-      editorView.setState(
-        EditorState.create({
-          doc: content,
-          extensions: [basicSetup, currentLangExt, getEditorTheme(), conceptClassifier()],
-        })
-      )
-    } else {
-      editorView = new EditorView({
+  // Editor mode — CodeMirror with concept highlights
+  const editorParent = document.getElementById("editor")!
+  if (editorView) {
+    editorView.setState(
+      EditorState.create({
         doc: content,
         extensions: [basicSetup, currentLangExt, getEditorTheme(), conceptClassifier()],
-        parent,
       })
-    }
+    )
+  } else {
+    editorView = new EditorView({
+      doc: content,
+      extensions: [basicSetup, currentLangExt, getEditorTheme(), conceptClassifier()],
+      parent: editorParent,
+    })
+  }
 
-    document.getElementById("current-file")!.textContent = filePath
+  // Book mode — fresh view per file
+  const bookParent = document.getElementById("book-view")!
+  if (bookHandle) {
+    bookHandle.destroy()
+    bookHandle = null
+  }
+  const result = await openBookView(bookParent, filename, content)
+  if ("error" in result) {
+    bookHandle = null
+  } else {
+    bookHandle = result
+  }
 
-    if (bookPanel) {
-      bookPanel.update(content, filename, editorView!)
-    }
-  })
+  document.getElementById("current-file")!.textContent = filePath
 }
 
 // --- File tree ---
@@ -137,8 +156,6 @@ async function renderTree(container: HTMLElement, dirPath: string) {
   }
 }
 
-// --- Init ---
-
 async function init() {
   if (window.platform) {
     document.documentElement.setAttribute("data-platform", window.platform)
@@ -147,16 +164,10 @@ async function init() {
   const openBtn = document.getElementById("open-folder")!
   const treeContainer = document.getElementById("file-tree")!
 
-  bookPanel = new BookPanel(document.getElementById("concept-tree")!)
-  bookPanel.setOnFileClick((relPath) => {
-    if (!projectRoot) return
-    const absPath = projectRoot + "/" + relPath
-    const filename = relPath.split("/").pop() || relPath
-    openFile(absPath, filename)
-  })
-
-  document.getElementById("mode-reader")!.addEventListener("click", () => setMode("reader"))
+  document.getElementById("mode-book")!.addEventListener("click", () => setMode("book"))
   document.getElementById("mode-editor")!.addEventListener("click", () => setMode("editor"))
+  document.getElementById("mode-expand-all")!.addEventListener("click", () => bookHandle?.expandAll())
+  document.getElementById("mode-collapse-all")!.addEventListener("click", () => bookHandle?.collapseAll())
 
   openBtn.addEventListener("click", async () => {
     const dir = await window.fs.showOpenDialog()
@@ -164,7 +175,6 @@ async function init() {
       projectRoot = dir
       document.getElementById("folder-name")!.textContent = dir.split("/").pop() || dir
       projectFiles = await window.fs.listFiles(dir)
-      if (bookPanel) bookPanel.setProjectFiles(projectFiles)
       await renderTree(treeContainer, dir)
     }
   })
