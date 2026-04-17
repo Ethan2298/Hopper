@@ -427,107 +427,103 @@ html[data-platform="win32"] header {
   display: none;
 }
 
-.bm-imports {
+/* Pure bullet-list rendering — every unit is a top-level bullet whose text is
+   the LLM's NL summary; its statements are indented sub-bullets. No headings,
+   no group chrome — just a markdown-style list. */
+.bm-outline-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.bm-outline-list-root {
+  padding: 2px 18px;
+}
+
+.bm-outline-list-sub {
+  margin: 2px 0 4px 22px;
+}
+
+.bm-outline-item {
+  margin: 0;
+}
+
+.bm-outline-item-unit > .bm-outline-row .bm-outline-text {
+  color: var(--text);
+}
+
+/* Bullet row — mirrors sidebar file-picker hover treatment (.tree-item:hover). */
+.bm-outline-row {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 6px 18px;
+  padding: 4px 10px;
   margin: 0;
   cursor: pointer;
-  font-family: "Iowan Old Style", Georgia, serif;
+  border-radius: 6px;
+  user-select: none;
+  color: var(--muted);
+  font-family: var(--font-ui);
   font-size: 13px;
-  color: #a8a090;
-  background: rgba(255,255,255,0.015);
+  line-height: 1.5;
+  transition: background-color 75ms ease-out, color 75ms ease-out;
 }
 
-.bm-imports:hover { background: rgba(255,255,255,0.04); }
-.bm-imports-text { flex: 1; font-style: italic; }
-
-.bm-card {
-  display: block;
-  padding: 10px 18px;
-  margin: 0;
-  cursor: pointer;
-  background: rgba(255,255,255,0.02);
-  border-top: 1px solid rgba(255,255,255,0.04);
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+.bm-outline-row:hover {
+  background: var(--tree-hover);
+  color: var(--text);
 }
 
-.bm-card-l0 { padding: 8px 18px; }
-.bm-card-l1 { padding: 10px 18px 4px 18px; }
-
-.bm-card:hover { background: rgba(255,255,255,0.045); }
-
-.bm-card-head {
-  display: grid;
-  grid-template-columns: 14px 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 8px;
-  row-gap: 2px;
+.bm-outline-row.open {
+  background: var(--tree-active-bg);
+  color: var(--text);
 }
 
-.bm-chev {
-  color: #888;
-  font-family: monospace;
-  font-size: 11px;
-  line-height: 1.55;
+.bm-outline-bullet {
+  flex: none;
+  width: 10px;
+  text-align: center;
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
   user-select: none;
 }
 
-.bm-card .bm-signature {
-  grid-column: 2;
-  font-family: "SF Mono", Menlo, Consolas, monospace;
-  font-size: 13px;
-  color: #9cdcfe;
-  white-space: pre-wrap;
+.bm-outline-text {
+  flex: 1;
   word-break: break-word;
 }
 
-.bm-card .bm-summary {
-  grid-column: 2;
+/* Markdown-esque fenced code block revealed underneath an open bullet. */
+.bm-code-block {
+  margin: 6px 0 10px 18px;
+  padding: 10px 14px;
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: var(--font-code);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.bm-code-block code {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  white-space: pre;
+}
+
+/* Invisible filler for lines not owned by any unit (top-level comments etc). */
+.bm-outline-gap {
+  display: block;
+  height: 0;
   margin: 0;
-  font-family: "Iowan Old Style", Georgia, serif;
-  font-style: italic;
-  font-size: 14px;
-  color: #cfc5a9;
-  line-height: 1.45;
+  padding: 0;
+  pointer-events: none;
 }
-
-.bm-card-l1 .bm-bullets {
-  list-style: none;
-  padding: 4px 0 6px 22px;
-  margin: 0;
-}
-
-.bm-bullet {
-  display: flex;
-  gap: 8px;
-  padding: 6px 10px;
-  margin: 0;
-  cursor: pointer;
-  border-left: 2px solid transparent;
-  font-family: "Iowan Old Style", Georgia, serif;
-  font-size: 13.5px;
-  line-height: 1.45;
-  color: #d6d0c2;
-  border-radius: 2px;
-}
-
-.bm-bullet:hover { background: rgba(255,255,255,0.04); }
-
-.bm-bullet-open {
-  border-left-color: #e8a33d;
-  background: rgba(232, 163, 61, 0.06);
-  color: #f0ddba;
-}
-
-.bm-bullet-chrome {
-  font-size: 12px;
-  color: #7e7870;
-  font-style: normal;
-}
-
-.bm-bullet-text { flex: 1; }
 
 /* Banners */
 

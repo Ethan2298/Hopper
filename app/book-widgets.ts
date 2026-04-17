@@ -1,90 +1,138 @@
 import { WidgetType } from "@codemirror/view"
-import type { ReaderUnit, UnitProse, ProseBullet } from "./prose-types"
+import type { ReaderUnit, OutlineStatement } from "./prose-types"
 
 /**
- * Unit card widget.
- * - level=0 (collapsed): card only; code body is hidden.
- * - level=1 (expanded): card with bullets listed below the summary.
- *   When expanded, the caller drops the body-hiding replace decoration
- *   so the raw code renders natively beneath this widget.
+ * Invisible filler used to replace lines that aren't owned by any unit
+ * (top-level comments, whitespace, stray expressions). Keeps the book view
+ * strictly outline-only.
  */
-export class CardWidget extends WidgetType {
+export class GapWidget extends WidgetType {
+  eq(_other: GapWidget) {
+    return true
+  }
+  toDOM() {
+    const el = document.createElement("div")
+    el.className = "bm-outline-gap"
+    return el
+  }
+  ignoreEvent() {
+    return true
+  }
+}
+
+/**
+ * One top-level bullet per unit, with its NL summary as the bullet text and
+ * the unit's statements as indented sub-bullets. Clicking any bullet reveals
+ * that bullet's code chunk in a markdown-style fenced block underneath.
+ *
+ * Statement index convention: -1 means the unit-level bullet (reveals full
+ * unit source); 0..N-1 are the statement bullets (reveal their chunk).
+ */
+export class UnitOutlineWidget extends WidgetType {
   constructor(
     readonly unit: ReaderUnit,
-    readonly prose: UnitProse | undefined,
-    readonly level: 0 | 1,
-    readonly onToggle: (unitIndex: number) => void
+    readonly summary: string,
+    readonly statements: OutlineStatement[],
+    readonly expandedSignature: string, // "U|01010…" serialization for eq()
+    readonly expandedSet: Set<string>,
+    readonly onToggle: (unitIndex: number, statementIndex: number) => void
   ) {
     super()
   }
 
-  eq(other: CardWidget) {
+  eq(other: UnitOutlineWidget) {
     return (
       other.unit === this.unit &&
-      other.prose === this.prose &&
-      other.level === this.level
+      other.summary === this.summary &&
+      other.statements === this.statements &&
+      other.expandedSignature === this.expandedSignature
     )
   }
 
   toDOM() {
-    const root = document.createElement("div")
-    root.className = `bm-card bm-card-l${this.level} bm-card-${this.unit.kind}`
-    root.addEventListener("click", () => this.onToggle(this.unit.index))
+    const list = document.createElement("ul")
+    list.className = `bm-outline-list bm-outline-list-root bm-outline-list-${this.unit.kind}`
 
-    const head = document.createElement("div")
-    head.className = "bm-card-head"
+    const unitOpen = this.expandedSet.has(`${this.unit.index}:-1`)
 
-    const chev = document.createElement("span")
-    chev.className = "bm-chev"
-    chev.textContent = this.level === 0 ? "▸" : "▾"
-    head.appendChild(chev)
+    const topItem = document.createElement("li")
+    topItem.className = "bm-outline-item bm-outline-item-unit"
+    topItem.appendChild(
+      this.buildRow(this.summaryText(), unitOpen, () => this.onToggle(this.unit.index, -1), 0)
+    )
+    if (unitOpen) topItem.appendChild(this.buildCodeBlock(this.unit.source))
 
-    const sig = document.createElement("code")
-    sig.className = "bm-signature"
-    sig.textContent = this.signatureLabel()
-    head.appendChild(sig)
+    // Sub-bullets: one per NL statement.
+    if (this.statements.length > 0) {
+      const subList = document.createElement("ul")
+      subList.className = "bm-outline-list bm-outline-list-sub"
+      for (let i = 0; i < this.statements.length; i++) {
+        const stmt = this.statements[i]
+        const key = `${this.unit.index}:${i}`
+        const open = this.expandedSet.has(key)
 
-    const summary = document.createElement("p")
-    summary.className = "bm-summary"
-    summary.textContent = this.prose?.oneLineSummary || ""
-    head.appendChild(summary)
-
-    root.appendChild(head)
-
-    if (this.level === 1 && this.prose && this.prose.bullets.length > 0) {
-      const list = document.createElement("ul")
-      list.className = "bm-bullets"
-      for (const b of this.prose.bullets) {
-        list.appendChild(this.renderBullet(b))
+        const subItem = document.createElement("li")
+        subItem.className = "bm-outline-item"
+        subItem.appendChild(
+          this.buildRow(stmt.text, open, () => this.onToggle(this.unit.index, i), 1)
+        )
+        if (open) subItem.appendChild(this.buildCodeBlock(this.sliceCode(stmt)))
+        subList.appendChild(subItem)
       }
-      root.appendChild(list)
+      topItem.appendChild(subList)
     }
 
-    return root
+    list.appendChild(topItem)
+    return list
   }
 
-  private signatureLabel(): string {
-    // Prefer the first line of the unit's source as its header label.
+  private buildRow(text: string, open: boolean, onClick: () => void, _depth: number) {
+    const row = document.createElement("div")
+    row.className = "bm-outline-row"
+    if (open) row.classList.add("open")
+    row.addEventListener("click", onClick)
+
+    const bullet = document.createElement("span")
+    bullet.className = "bm-outline-bullet"
+    bullet.textContent = "•"
+    row.appendChild(bullet)
+
+    const label = document.createElement("span")
+    label.className = "bm-outline-text"
+    label.textContent = text
+    row.appendChild(label)
+
+    return row
+  }
+
+  private buildCodeBlock(text: string): HTMLElement {
+    const pre = document.createElement("pre")
+    pre.className = "bm-code-block"
+    const code = document.createElement("code")
+    code.textContent = text
+    pre.appendChild(code)
+    return pre
+  }
+
+  private summaryText(): string {
+    if (this.summary) return this.summary
+    if (this.unit.kind === "import-block") return "Import dependencies."
     const firstLine = (this.unit.source || "").split("\n")[0].trim()
     if (firstLine) return firstLine
     return `${this.unit.kind} ${this.unit.name}`
   }
 
-  private renderBullet(bullet: ProseBullet) {
-    const li = document.createElement("li")
-    li.className = `bm-bullet bm-bullet-${bullet.kind}`
-
-    const dot = document.createElement("span")
-    dot.className = "bm-bullet-dot"
-    dot.textContent = "•"
-    li.appendChild(dot)
-
-    const text = document.createElement("span")
-    text.className = "bm-bullet-text"
-    text.textContent = bullet.text
-    li.appendChild(text)
-
-    return li
+  private sliceCode(stmt: OutlineStatement): string {
+    const lines = (this.unit.source || "").split("\n")
+    const start = Math.max(0, stmt.startLine - 1)
+    const end = Math.min(lines.length, stmt.endLine)
+    if (start >= end) return ""
+    const slice = lines.slice(start, end)
+    const indents = slice
+      .filter((l) => l.trim().length > 0)
+      .map((l) => l.match(/^\s*/)?.[0].length ?? 0)
+    const minIndent = indents.length ? Math.min(...indents) : 0
+    return slice.map((l) => l.slice(minIndent)).join("\n")
   }
 
   ignoreEvent() {

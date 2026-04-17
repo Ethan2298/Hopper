@@ -51,14 +51,6 @@ export interface AnnotatedFile {
   nodes: AnnotatedNode[]
 }
 
-export type BulletKind = "semantic" | "chrome"
-
-/** Prose bullet, no line ranges — paired to its unit by position. */
-export interface ProseBullet {
-  text: string
-  kind: BulletKind
-}
-
 /** AST-derived unit of the file. Line ranges come from Lezer, not the LLM. */
 export type ReaderUnitKind =
   | "function"
@@ -81,11 +73,21 @@ export interface ReaderUnit {
   source: string          // the file slice for this unit (sent to the LLM)
 }
 
+/**
+ * A single NL outline statement covering a logical block of the unit's body.
+ * Line numbers are 1-indexed **within the unit's `source`** (not the whole file).
+ */
+export interface OutlineStatement {
+  text: string
+  startLine: number
+  endLine: number
+}
+
 /** LLM-provided prose for one unit, keyed by index. */
 export interface UnitProse {
   index: number
-  oneLineSummary: string
-  bullets: ProseBullet[]  // empty if isMultiLine is false, or if the LLM chose no partitioning
+  summary: string                 // one-sentence NL description of the unit
+  statements: OutlineStatement[]  // sub-bullets; empty if isMultiLine is false
 }
 
 export interface BookReaderOutline {

@@ -8,6 +8,8 @@ Hopper (package name: `ergonomic-code`) — an Electron desktop app that renders
 
 Pipeline: `raw text → Lezer AST → FileStructure → ReaderUnit[] → LLM prose (JSON, per unit) → CodeMirror block decorations (card widgets over each unit)`.
 
+**Design reference:** Book mode's UX target is the Google paper [Natural Language Outlines for Code: Literate Programming in the LLM Era](https://arxiv.org/abs/2408.04820) (Shi et al., FSE 2025) — NL statements interleaved with the code they summarize, bidirectional sync between prose and code. Current direction: a flat markdown-bullet outline (one bullet per unit, code revealed on click) rather than card chrome.
+
 ## Commands
 
 - `npm run bundle` — bundle the renderer once (`esbuild app/editor.ts --bundle --outfile=app/bundle.js`).
@@ -32,11 +34,11 @@ Three-layer Electron app. Cross them only via the IPC handlers defined in `main.
 - `book-units.ts` — turns a `FileStructure` into a flat `ReaderUnit[]` (one unit per top-level declaration plus a coalesced imports unit). Records line ranges for each unit; these are the ranges the Book view paints over.
 - `book-outline.ts` — calls `window.ai.describeBookOutline` with the units, zips the LLM's prose into a `BookReaderOutline`, SHA-256 caches by `CACHE_VERSION + filename + content` (bump `CACHE_VERSION` to invalidate).
 - `book-decorations.ts` — CodeMirror `StateField` that provides block `Decoration.replace` widgets over each unit's line range. Fold state is managed through `bookFoldEffect`. (Must be a `StateField`, not a `ViewPlugin`: block-replace decorations need to survive across transactions without races.)
-- `book-widgets.ts` — `CardWidget` (collapsed / expanded unit card) and `ImportWidget` rendered by the decorations field.
+- `book-widgets.ts` — `OutlineRowWidget` (one per NL statement) and `ImportsRowWidget`. Flat markdown-style bullets; hover treatment matches the sidebar file-picker (`.tree-item:hover`).
 - `book-view.ts` — public entry (`openBookView`) that creates an `EditorState`, extracts units, fetches prose, then builds the read-only `EditorView` with the decorations extension. Exposes `expandAll` / `collapseAll` via a `BookViewHandle`.
 - `prose-types.ts` — shared types: `FileNode`, `FileStructure`, `ReaderUnit`, `UnitProse`, `BookReaderOutline`.
 
-The LLM contract is JSON-in, JSON-out. The system prompt in `main.js` (`describe-book-outline` handler) defines the `UnitProse` shape; the renderer supplies `{ index, kind, name, isMultiLine, source }` per unit and the LLM returns `{ prose: UnitProse[] }`. Line numbers and source ranges are owned by the renderer — the LLM never emits them. Unit source is capped at `MAX_UNIT_SOURCE = 8_000` chars per unit in `main.js`; one retry on parse failure, then a fallback outline with empty bullets.
+The LLM contract is JSON-in, JSON-out. The system prompt in `main.js` (`describe-book-outline` handler) implements the paper's **Interleaved Generation**: the renderer supplies each unit's `source` with 1-based `" n| "` line prefixes, and the LLM returns `{ prose: UnitProse[] }` where `UnitProse = { index, statements: OutlineStatement[] }` and `OutlineStatement = { text, startLine, endLine }` — line numbers are *unit-relative*. The renderer maps them to absolute doc lines and clamps to exclude the signature line. Statements are imperative present-tense fragments starting with a verb ("Compute", "Initialize", …). Unit source is capped at `MAX_UNIT_SOURCE = 8_000` chars per unit; one retry on parse failure, then a fallback outline with empty statements (unit renders natively).
 
 ### Adding a language
 

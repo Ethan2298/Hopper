@@ -17,7 +17,7 @@ declare global {
   }
 }
 
-const CACHE_VERSION = "v2-book"
+const CACHE_VERSION = "v5-imperative"
 
 const cache = new Map<string, BookReaderOutline>()
 
