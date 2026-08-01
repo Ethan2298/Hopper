@@ -271,18 +271,24 @@ type OutlineStatement = {
   endLine: number                  // inclusive; must be >= startLine
 }
 
-Style rules for summary (written in the spirit of Knuth's literate programming — each summary reads like the TITLE of a named code section, a COMMAND to the machine):
-- One imperative-mood sentence, present tense, ~6–14 words. Start with a strong verb.
-- Good: "Compute the nearest-neighbor tour for a set of 2D nodes.", "Parse the LLM's JSON response, stripping optional code fences.", "Import file-system and Anthropic SDK helpers.", "Define the shape of a parsed reader unit.", "Cap the per-unit source length sent to the LLM."
-- Bad (declarative / descriptive — DO NOT write these):
-  * "Builds a tour…"         → write "Build a tour…"
-  * "This function computes…" → write "Compute…"
-  * "A helper that parses…"   → write "Parse…"
-  * "Represents a reader…"    → write "Define the shape of a reader…" or "Describe a reader…"
-- For a type/interface/enum: use "Define…", "Describe…", or "Enumerate…".
-- For a constant: use "Set…", "Hold…", or "Cap…" as appropriate.
-- Never reference identifier names by quoting them; summarize intent.
-- End with a period.
+Style rules for summary (written as an INSTRUCTION to the computer — Knuth-style literate-programming section title — but in words a total beginner can follow; assume the reader has never programmed):
+- One imperative-mood sentence addressed to the computer. Start with a plain verb. ~10–20 words.
+- Think of it as: "Computer, do this." The summary tells the machine what job to carry out, not the reader what the code "is".
+- Use everyday verbs and nouns. Avoid programming jargon: do NOT use "function", "parameter", "array", "boolean", "class", "method", "instance", "object", "type", "interface", "iterate", "loop", "return", "argument", "string", "null", "undefined", "callback", "promise", "async", "import", "export". Unpack any concept you must mention (say "a list of values" instead of "an array").
+- Prefer concrete verbs a beginner understands: "plan", "pick", "find", "remember", "pull in", "set aside", "keep track of", "write down", "check", "hand back", "line up", "gather".
+- Good examples (imperative, beginner-friendly):
+  * "Plan a route that visits every place on the map once, always hopping to the closest place not yet visited."
+  * "Read the reply from the AI and pull the useful part out, even if the AI wrapped it in extra formatting."
+  * "Pull in helper tools from elsewhere in the project so the rest of this file can use them."
+  * "Write down the shape of a piece of information the app passes around — what pieces it has and what each piece means."
+  * "Set a limit on how much code the app will show to the AI at one time, to keep things quick and cheap."
+- Bad examples (do NOT write these):
+  * "This code goes through a list…"          → declarative; address the computer directly instead
+  * "A function that parses JSON."             → jargon + declarative
+  * "Computes the nearest-neighbor tour."      → too terse, too jargon-y
+  * "Iterates over the array."                 → every word is jargon
+  * "Returns a boolean."                       → every word is jargon
+- Never quote identifier names. Never mention line numbers. End with a period.
 
 Style rules for statements (match these tightly):
 - Start with a strong verb: "Compute", "Initialize", "Iterate", "Mark", "Return", "Validate", "Build", "Dispatch", etc.
@@ -316,7 +322,7 @@ Input unit source (line-prefixed):
  10|     return tour
 
 Correct output:
-  summary: "Build a greedy nearest-neighbor tour over a set of 2D nodes."
+  summary: "Plan a route that visits every place on the map once, always hopping to the closest place not yet visited."
   statements: [
     { "text": "Compute all pairwise distances between nodes.", "startLine": 2, "endLine": 2 },
     { "text": "Initialize the tour at node 0.",                "startLine": 3, "endLine": 4 },
